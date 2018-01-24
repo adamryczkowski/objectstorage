@@ -1,0 +1,73 @@
+context("Saving objects")
+library(objectstorage)
+library(testthat)
+#source('tests/testthat/testfunctions.R')
+
+source('testfunctions.R')
+
+test_that("Save simple object", {
+  source('tests/testthat/testfunctions.R')
+  storagepath<-pathcat::path.cat(tmpdir, 'test_add_intern_1')
+  env<-new.env()
+  env$a<-100
+
+  ans<-infer_save_locations(storagepath, obj.environment=env, forced_archive_paths='a.rds')
+
+#  debugonce(set_runtime_archive)
+#  debugonce(add_runtime_objects_internal)
+  add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
+}
+)
+
+test_that("Test for adding object record (1)", expect_equal_to_reference({
+  tempdir<-'/tmp';
+  m<-testf1(tempdir);
+},"metadata1.rds"))
+
+test_that("Test for adding another object record (1)", expect_warning({
+  code<-"x<-1:10";
+  m<-depwalker:::create.metadata(code, file.path(tmpdir, "task1"));
+  m<-depwalker:::add.objectrecord(m,"x",file.path(tmpdir, "x"));
+  m<-depwalker:::add.objectrecord(m,"x",file.path(tmpdir, "x"));
+},regexp='object "x" is already present in the exports of the task. Overwriting.'))
+
+test_that("Save and read simple metadata (1)", {
+    m<-readRDS('metadata1.rds');
+    depwalker:::make.sure.metadata.is.saved(m);
+    m2<-depwalker:::load.metadata(m$path);
+    testthat::expect_equal(depwalker:::metadata.digest(m),depwalker:::metadata.digest(m2))
+})
+
+test_that("Test add parent to metadata (2)", {
+  m<-testf2(tmpdir);
+  m2<-depwalker:::load.metadata(file.path(tmpdir, "task2"));
+  testthat::expect_true(depwalker:::are.two.metadatas.equal(m,m2))
+})
+
+test_that("Test add parent to metadata with alias (3)", {
+  m<-testf3(tmpdir);
+  m2<-depwalker:::load.metadata(file.path(tmpdir, "task3"));
+  expect_true(depwalker:::are.two.metadatas.equal(m,m2))
+})
+
+test_that("Test add extra parents (4)", {
+  m<-testf4(tmpdir);
+  m2<-depwalker:::load.metadata(file.path(tmpdir, "task4"));
+  expect_true(depwalker:::are.two.metadatas.equal(m,m2))
+})
+
+test_that("Test add extra parents with conflict (4)", expect_error({
+  testf1(tmpdir)
+  testf3(tmpdir)
+  testf4(tmpdir);
+  testf10(tmpdir);
+  m<-depwalker:::load.metadata(file.path(tmpdir, "task4"));
+  m<-depwalker:::add.parent(metadata = m, name = 'bla',  parent.path = file.path(tmpdir, "task10"), aliasname = 'a2')
+}, regexp='^a2 is already present in parents of .*task4$'))
+
+test_that("Test task with multiple outputs (5)", {
+  m<-testf5(tmpdir);
+  m2<-depwalker:::load.metadata(file.path(tmpdir, "task5"));
+  expect_true(depwalker:::are.two.metadatas.equal(m,m2))
+})
+
