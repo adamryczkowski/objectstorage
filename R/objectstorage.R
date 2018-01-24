@@ -300,11 +300,11 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
                                             parallel_cpus=parallel_cpus),
                               SIMPLIFY=FALSE)
     }
-    browser()
     jobs<-list()
+    oldidx<-oldidx[oldidx$archive_filename %in% change_objects_db_nested$archive_filename,]
     for(i in seq_along(ans)) {
       jobs[[i]]<-ans[[i]]$job
-      oldidx<-rbind(filter(oldidx, archive_filename!=archive_filename), ans[[i]]$dbchunk)
+      oldidx<-rbind(oldidx, ans[[i]]$dbchunk)
     }
     if(length(jobs)>0) {
       cat("Waiting for saves to finish..")

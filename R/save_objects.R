@@ -150,8 +150,10 @@ modify_runtime_archive<-function(storagepath, obj.environment, addobjectnames=NU
   if(length(addobjectnames)==0) {
     addobjectnames<-character(0)
   } else {
-    if(is.na(addobjectnames)) {
-      addobjectnames<-character(0)
+    if(length(addobjectnames)==1) {
+      if(is.na(addobjectnames)) {
+        addobjectnames<-character(0)
+      }
     }
     if('list' %in% class(addobjectnames)) {
       addobjectnames<-unlist(addobjectnames)
@@ -161,8 +163,10 @@ modify_runtime_archive<-function(storagepath, obj.environment, addobjectnames=NU
   if(length(removeobjectnames)==0) {
     removeobjectnames<-character(0)
   } else {
-    if(is.na(removeobjectnames)) {
-      removeobjectnames<-character(0)
+    if(length(removeobjectnames)==1) {
+      if(is.na(removeobjectnames)) {
+        removeobjectnames<-character(0)
+      }
     }
     if('list' %in% class(removeobjectnames)) {
       removeobjectnames<-unlist(removeobjectnames)
@@ -197,11 +201,6 @@ modify_runtime_archive<-function(storagepath, obj.environment, addobjectnames=NU
     }
   }
 
-  if(length(objs_to_add)>1) {
-    obj<-as.list(obj.environment[objs_to_add])
-  } else {
-    obj<-obj.environment[[objs_to_add]]
-  }
   return(set_runtime_archive(obj.environment=obj.environment,
                              objectnames=objs_to_add,
                              archive_filename=archive_filename,
@@ -254,7 +253,7 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
 
 
     if(length(objectnames)>1) {
-      obj<-as.list(obj.environment[objectnames])
+      obj<-as.list(obj.environment)[objectnames]
     } else {
       obj<-obj.environment[[objectnames]]
     }

@@ -61,6 +61,7 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
     stop("target.environment is missing")
   }
 
+
   if(flag_use_attrib) {
     if(!is.null(attr(target.environment[[objectname]], getOption('reserved_attr_for_hash')))) {
       return(attr(target.environment[[objectname]], getOption('reserved_attr_for_hash')))
@@ -68,21 +69,19 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
   }
 
   #Należy usunąć nasze metadane do kalkulacji digestu, bo metadane same mogą zawierać digest i nigdy nie uzyskamy spójnych wyników
-  parentrecord<-attr(get(objectname, envir=target.environment),'parentrecord')
-  if (!is.null(parentrecord))
-    eval(parse(text=paste0('setattr(', objectname, ", 'parentrecord', NULL)")),envir=target.environment)
+  obj<-target.environment[[objectname]]
 
-  if (data.table::is.data.table(get(objectname, envir=target.environment)))
+  if (data.table::is.data.table(obj))
   {
-    d<-tryCatch(parallel::mclapply(get(objectname,envir = target.environment) , function(x) digest::digest(x, algo="md5")),
+    d<-tryCatch(parallel::mclapply(obj , function(x) digest::digest(x, algo="md5")),
                 error=function(e) e)
     if ('error' %in% class(d))
     {
-      d<-lapply(get(objectname,envir = target.environment) , function(x) digest::digest(x, algo="md5"))
+      d<-lapply(obj , function(x) digest::digest(x, algo="md5"))
     }
     d<-digest::digest(d[order(names(d))])
   } else {
-    d<-digest::digest(get(objectname, envir=target.environment))
+    d<-digest::digest(obj)
   }
   if(flag_add_attrib) {
     data.table::setattr(target.environment[[objectname]], getOption('reserved_attr_for_hash'), d)

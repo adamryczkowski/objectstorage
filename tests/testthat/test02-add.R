@@ -5,9 +5,9 @@ library(testthat)
 
 source('testfunctions.R')
 
-test_that("Save simple object", {
-  source('tests/testthat/testfunctions.R')
-  storagepath<-pathcat::path.cat(tmpdir, 'test_add_intern_1')
+test_that("Save simple forced object", {
+#  source('tests/testthat/testfunctions.R')
+  storagepath<-pathcat::path.cat(tmpdir, 'add_1_forced')
   env<-new.env()
   env$a<-100
 
@@ -16,58 +16,107 @@ test_that("Save simple object", {
 #  debugonce(set_runtime_archive)
 #  debugonce(add_runtime_objects_internal)
   add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
+  sp<-list_runtime_objects(storagepath = storagepath)
+  testthat::expect_equivalent(as.list(sp), list(objectnames='a', digest=digest::digest(env$a),
+                                                size=as.numeric(object.size(env$a)),
+                                                archive_filename='a.rds', single_object=TRUE))
+
+  env2<-new.env()
+  expect_true(load_objects(storagepath = storagepath, objectnames = 'a', env2, flag_double_check_digest = TRUE))
 }
 )
 
-test_that("Test for adding object record (1)", expect_equal_to_reference({
-  tempdir<-'/tmp';
-  m<-testf1(tempdir);
-},"metadata1.rds"))
+test_that("Save simple forced object", {
+  #  source('tests/testthat/testfunctions.R')
+  storagepath<-pathcat::path.cat(tmpdir, 'add_1_default')
+  env<-new.env()
+  env$a<-100
 
-test_that("Test for adding another object record (1)", expect_warning({
-  code<-"x<-1:10";
-  m<-depwalker:::create.metadata(code, file.path(tmpdir, "task1"));
-  m<-depwalker:::add.objectrecord(m,"x",file.path(tmpdir, "x"));
-  m<-depwalker:::add.objectrecord(m,"x",file.path(tmpdir, "x"));
-},regexp='object "x" is already present in the exports of the task. Overwriting.'))
+  ans<-infer_save_locations(storagepath, obj.environment=env)
 
-test_that("Save and read simple metadata (1)", {
-    m<-readRDS('metadata1.rds');
-    depwalker:::make.sure.metadata.is.saved(m);
-    m2<-depwalker:::load.metadata(m$path);
-    testthat::expect_equal(depwalker:::metadata.digest(m),depwalker:::metadata.digest(m2))
-})
+  #  debugonce(set_runtime_archive)
+  #  debugonce(add_runtime_objects_internal)
+  add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
+  sp<-list_runtime_objects(storagepath = storagepath)
+  testthat::expect_equivalent(as.list(sp), list(objectnames='a', digest=digest::digest(env$a),
+                                                size=as.numeric(object.size(env$a)),
+                                                archive_filename='add_1_default.rda', single_object=TRUE))
 
-test_that("Test add parent to metadata (2)", {
-  m<-testf2(tmpdir);
-  m2<-depwalker:::load.metadata(file.path(tmpdir, "task2"));
-  testthat::expect_true(depwalker:::are.two.metadatas.equal(m,m2))
-})
+  env2<-new.env()
+  debugonce(load_objects)
+  testthat::expect_true(load_objects(storagepath = storagepath, objectnames = 'a', env2, flag_double_check_digest = TRUE))
 
-test_that("Test add parent to metadata with alias (3)", {
-  m<-testf3(tmpdir);
-  m2<-depwalker:::load.metadata(file.path(tmpdir, "task3"));
-  expect_true(depwalker:::are.two.metadatas.equal(m,m2))
-})
+}
+)
 
-test_that("Test add extra parents (4)", {
-  m<-testf4(tmpdir);
-  m2<-depwalker:::load.metadata(file.path(tmpdir, "task4"));
-  expect_true(depwalker:::are.two.metadatas.equal(m,m2))
-})
 
-test_that("Test add extra parents with conflict (4)", expect_error({
-  testf1(tmpdir)
-  testf3(tmpdir)
-  testf4(tmpdir);
-  testf10(tmpdir);
-  m<-depwalker:::load.metadata(file.path(tmpdir, "task4"));
-  m<-depwalker:::add.parent(metadata = m, name = 'bla',  parent.path = file.path(tmpdir, "task10"), aliasname = 'a2')
-}, regexp='^a2 is already present in parents of .*task4$'))
+test_that("Save two objects, default inference", {
+  storagepath<-pathcat::path.cat(tmpdir, 'add_2_default')
+  env<-new.env()
+  env$a<-100
+  env$b<-101
 
-test_that("Test task with multiple outputs (5)", {
-  m<-testf5(tmpdir);
-  m2<-depwalker:::load.metadata(file.path(tmpdir, "task5"));
-  expect_true(depwalker:::are.two.metadatas.equal(m,m2))
-})
+#  debugonce(add_runtime_objects_internal)
+#  debugonce(infer_save_locations)
+  ans<-infer_save_locations(storagepath, obj.environment=env)
+  add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
+  sp<-list_runtime_objects(storagepath = storagepath)
+  #  debugonce(add_runtime_objects_internal)
 
+  testthat::expect_equivalent(as.list(sp), list(objectnames=c('a', 'b'), digest=c(digest::digest(env$a), digest::digest(env$b)),
+                                                size=as.numeric(c(object.size(env$a), object.size(env$b))),
+                                                archive_filename=rep('add_2_default.rda',2), single_object=rep(FALSE,2)))
+
+  env2<-new.env()
+  testthat::expect_true(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE))
+  testthat::expect_equal(env2$a, env$a)
+  testthat::expect_equal(env2$b, env$b)
+
+  env3<-new.env()
+  debugonce(load_objects)
+  testthat::expect_true(load_objects(storagepath = storagepath, objectnames = 'a',target.environment =  env3, flag_double_check_digest = TRUE))
+  load_objects(storagepath = storagepath, objectnames = 'a',target.environment =  env3, flag_double_check_digest = TRUE)
+  testthat::expect_equivalent(as.list(env3), list(a=100))
+}
+)
+
+test_that("Two objects, one large, default inference", {
+  storagepath<-pathcat::path.cat(tmpdir, 'add_2_large')
+  env<-new.env()
+  env$a<-100
+  env$b<-runif(20000)
+
+  # debugonce(infer_save_locations)
+  ans<-infer_save_locations(storagepath, obj.environment=env)
+  testthat::expect_false(is.null(ans))
+  debugonce(add_runtime_objects_internal)
+  add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
+
+  env2<-new.env()
+  debugonce(load_objects)
+  testthat::expect_true(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE))
+  testthat::expect_equivalent(env, env2)
+}
+)
+
+test_that("Multiple objects that share common, to test naming", {
+  storagepath<-pathcat::path.cat(tmpdir, 'test_infer')
+
+  objnames<-unique(purrr::map_chr(1:20, ~paste0(sample(c(LETTERS, letters),2), collapse=''),10))
+  objsizes<-pmin(round(rexp(length(objnames),1/100000)/20), getOption('tune.threshold_objsize_for_dedicated_archive'))
+  objsizes<-pmax(objsizes-96-8, 1)
+
+  env<-new.env()
+  for(i in seq_along(objnames)) {
+    pname<-objnames[[i]]
+    objsize<-objsizes[[i]]
+    assign(pname, paste0(sample(LETTERS, objsize, replace = TRUE), collapse=''), envir = env)
+  }
+  assign('a', paste0(sample(LETTERS, getOption('tune.threshold_objsize_for_dedicated_archive'), replace = TRUE), collapse=''), envir = env)
+
+
+  #  debugonce(infer_save_locations)
+  ans<-infer_save_locations(storagepath, obj.environment=env)
+
+}
+)
