@@ -85,85 +85,27 @@ list_runtime_objects<-function(storagepath) {
 
 # Na wejściu otrzymujemy listę archives list, która dla każdego archiwum zawiera listę z elementami
 # objectnames - lista objektów, archive_filename - ścieżka do pliku archiwum, compress, flag_use_tmp_storage
-add_runtime_objects<-function(storagepath, obj.environment, archives_list, locktimeout=NULL,
-                              wait_for='save',flag_forced_save_filenames=NULL,
-                              flag_use_tmp_storage=FALSE, parallel_cpus=NULL,
-                              default_save_directory_suffix='')
+
+modify_runtime_objects<-function(storagepath, obj.environment, objects_to_add=NULL, objects_to_remove=character(0),
+                                 flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
+                                 forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
+                                 flag_no_nested_folder=FALSE,
+                                 locktimeout=NULL,
+                                 wait_for='save',parallel_cpus=NULL)
 {
-  archives_db<-lists_to_df(archives_list, list_columns='objectnames')
-  archives_db_flat<-data.table(dplyr::select(tidyr::unnest(archives_db), -compress, -flag_use_tmp_storage),
-                               digest=NA_character_, size=NA_real_)
-  archives_db_flat<-purrrlyr::by_row(archives_db_flat, ~length(.$objectnames[[1]])>1, .collate = 'cols', .to='single_object')
+  archives_list<-infer_save_locations(storagepath = storagepath, objectnames = objects_to_add,
+                                      obj.environment = obj.environment,
+                                      flag_forced_save_filenames = flag_forced_save_filenames,
+                                      flag_use_tmp_storage = flag_use_tmp_storage,
+                                      forced_archive_paths = forced_archive_paths,
+                                      compress = compress, large_archive_prefix = large_archive_prefix,
+                                      flag_no_nested_folder = flag_no_nested_folder)
 
-
-  objectnames<-archives_db_flat$objectnames
-
-  for(i in seq_along(objectnames)) {
-    objname<-objectnames[[i]]
-    set(archives_db_flat, i, 'digest', calculate.object.digest(objname, obj.environment))
-    set(archives_db_flat, i, 'size', object.size(obj.environment[[objname]]))
-  }
-
-  flag_do_sequentially=FALSE
-  if(!is.null(parallel_cpus)) {
-    if(parallel_cpus==0) {
-      flag_do_sequentially=TRUE
-    }
-  }
-
-
-  if(lock.exists(path, locktimeout)) {
-    cat("Waiting to get the lock for ", path, "...\n")
-  }
-  create.lock.file(path, locktimeout)
-  tryCatch({
-
-    oldidx<-list_runtime_objects(storagepath = storagepath)
-
-    to_remove<-dplyr::inner_join(oldidx, archives_db_flat, by=c(objectnames='objectnames'))
-    #We remove objects that are going to replaced
-
-    if(nrow(to_remove)>0) {
-      browser()
-      #TODO: Trzeba załatwić sytuację, gdy obiekt przechodzi z jednego kontenera do drugiego.
-      #To, co robimy zależy od tego, ile jest obiektów w kontenerze, z którego obiekt jest usuwany.
-      #Jeśli kontener, z którego obiekt jest usuwany, figuruje wśród kontenerów z listy archives_db,
-      #To należy doczytać wszystkie pozostałe obiekty z tego kontenera, dodać go do environment,
-    }
-
-
-
-    if(flag_do_sequentially) {
-      ans<-mapply(save_runtime_archive,
-                  objectnames=archives_db$objectnames,
-                  archive_filename=archives_db$archive_filename,
-                  compress=archives_db$compress,
-                  flag_use_tmp_storage=archives_db$flag_use_tmp_storage,
-                  MoreArgs=list(obj.environment=obj.environment,
-                                wait_for=wait_for,
-                                parallel_cpus=parallel_cpus))
-    } else {
-      ans<-parallel::mcmapply(save_runtime_archive,
-                              objectnames=archives_db$objectnames,
-                              archive_filename=archives_db$archive_filename,
-                              compress=archives_db$compress,
-                              flag_use_tmp_storage=archives_db$flag_use_tmp_storage,
-                              MoreArgs=list(obj.environment=obj.environment,
-                                            wait_for=wait_for,
-                                            parallel_cpus=parallel_cpus))
-    }
-    jobs<-list()
-    for(i in seq_along(ans)) {
-      jobs[[i]]<-ans$job
-      oldidx<-rbind(filter(oldidx, archive_filename!=archive_filename), newchunk)
-    }
-    if(length(jobs)>0) {
-      cat("Waiting for saves to finish..")
-      parallel::mccollect(jobs, wait=TRUE, intermediate = function() {cat('.')})
-      cat("\n")
-    }
-    update_runtime_objects_index(storagepath = storagepath, newidx=oldidx)
-  }, finally=release.lock.file(path))
+  add_runtime_objects_internal(storagepath = storagepath, obj.environment = obj.environment,
+                               archives_list = archives_list, parallel_cpus = parallel_cpus,
+                               removeobjectnames = objects_to_remove,
+                               locktimeout = locktimeout, wait_for = wait_for)
+  return(storagepath)
 }
 
 #archives_list - output from infer_save_locations()
@@ -226,25 +168,26 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
       dplyr::anti_join(archives_db_flat, oldidx, by=c(objectnames='objectnames')),
       objectnames, archive_filename)
     different_objects_db<-dplyr::select(
-      dplyr::filter(changed_objects_db, archive_filename_old==archive_filename_new),
-      objectnames, digest_old)
-    if(nrow(different_objects_db)>0) {
-      fn_get_digest<-function(objectname) {
-        calculate.object.digest(objectname = objectname, target.environment = obj.environment,
-                                flag_use_attrib=TRUE, flag_add_attrib=FALSE)
-      }
-      if(flag_do_sequentially) {
-        digests<-lapply(different_objects_db$objectname, fn_get_digest)
-      } else {
-        digests<-parallel::mclapply(different_objects_db$objectname, fn_get_digest)
-      }
-      different_objects_db$digest_new<-as.character(digests)
+      dplyr::filter(changed_objects_db, archive_filename_old==archive_filename_new & digest_old!=digest_new),
+      objectnames, archive_filename=archive_filename_new)
+    # if(nrow(different_objects_db)>0) {
+    #   fn_get_digest<-function(objectname) {
+    #     calculate.object.digest(objectname = objectname, target.environment = obj.environment,
+    #                             flag_use_attrib=TRUE, flag_add_attrib=FALSE)
+    #   }
+    #   if(flag_do_sequentially) {
+    #     digests<-lapply(different_objects_db$objectname, fn_get_digest)
+    #   } else {
+    #     digests<-parallel::mclapply(different_objects_db$objectname, fn_get_digest)
+    #   }
+    #   different_objects_db$digest_new<-as.character(digests)
+    #
+    #   different_objects_db<-dplyr::select(
+    #     dplyr::filter(different_objects_db, digest_new==digest_old),
+    #     objectnames, archive_filename)
+    # }
 
-      different_objects_db<-dplyr::select(
-        dplyr::filter(different_objects_db, digest_new==digest_old),
-        objectnames, archive_filename=archive_filename_old)
-      new_objects_db<-rbind(new_objects_db, different_objects_db)
-    }
+    new_objects_db<-rbind(new_objects_db, different_objects_db)
 
     #Now we need to group new_objects_db and db_to_remove by archive_filename, and apply it
 
@@ -301,7 +244,7 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
                               SIMPLIFY=FALSE)
     }
     jobs<-list()
-    oldidx<-oldidx[oldidx$archive_filename %in% change_objects_db_nested$archive_filename,]
+    oldidx<-oldidx[!oldidx$archive_filename %in% change_objects_db_nested$archive_filename,]
     for(i in seq_along(ans)) {
       jobs[[i]]<-ans[[i]]$job
       oldidx<-rbind(oldidx, ans[[i]]$dbchunk)

@@ -63,8 +63,8 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
 
 
   if(flag_use_attrib) {
-    if(!is.null(attr(target.environment[[objectname]], getOption('reserved_attr_for_hash')))) {
-      return(attr(target.environment[[objectname]], getOption('reserved_attr_for_hash')))
+    if(!is.null(attr(get(objectname, envir = target.environment), getOption('reserved_attr_for_hash')))) {
+      return(attr(get(objectname, envir = target.environment), getOption('reserved_attr_for_hash')))
     }
   }
 
@@ -84,10 +84,23 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
     d<-digest::digest(obj)
   }
   if(flag_add_attrib) {
-    data.table::setattr(target.environment[[objectname]], getOption('reserved_attr_for_hash'), d)
+    if(objectname %in% names(target.environment)) { #It may be in the parent of the environment, and in this case we will not touch it
+      data.table::setattr(target.environment[[objectname]], getOption('reserved_attr_for_hash'), d)
+    }
   }
   assertDigest(d)
   return(d)
+}
+
+clear_digest_cache<-function(objectname, envir) {
+  while(!identical(envir, .GlobalEnv)) {
+    if(objectname %in% names(envir)) {
+      setattr(envir[[objectname]], getOption('reserved_attr_for_hash'), NULL)
+      return(TRUE)
+    }
+    envir<-parent.env(envir)
+  }
+  return(FALSE)
 }
 
 assertDigest<-function(digest)

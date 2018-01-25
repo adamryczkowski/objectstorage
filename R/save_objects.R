@@ -216,7 +216,7 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
                               flag_use_tmp_storage=FALSE, parallel_cpus=NULL
                               ) {
   if(is.null(objectnames)){
-    objectnames<-names(obj.environment)
+    objectnames<-ls(obj.environment)
   }
 
   archivepath<-pathcat::path.cat(dirname(storagepath), archive_filename)
@@ -229,13 +229,19 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
     }
     return(hash)
   }
-  digests<-purrr::map_chr(objectnames, get_digest, env=obj.environment)
+  digests<-purrr::map_chr(objectnames, calculate.object.digest, target.environment=obj.environment)
+  clears<-purrr::map_lgl(objectnames, clear_digest_cache, envir=obj.environment)
+  if(!all(clears)) {
+    browser()
+    stop(paste0("Some objects were not found in the environment!"))
+  }
+
   # sizes<-rep(NA_real_, length(objectnames))
   # for (i in seq(1, length(objectnames))) {
   #   sizes[[i]]<-object.size(obj.environment)
   # }
 
-  sizes<-as.numeric(purrr::map_chr(objectnames, ~object.size(obj.environment[[.]])))
+  sizes<-as.numeric(purrr::map_chr(objectnames, ~object.size(get(., envir = obj.environment))))
 
   if(length(objectnames)==0) {
     if(file.exists(archivepath)) {
@@ -253,9 +259,12 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
 
 
     if(length(objectnames)>1) {
-      obj<-as.list(obj.environment)[objectnames]
+      obj<-list()
+      for(objname in objectnames) {
+        obj[[objname]]<-get(objname, envir = obj.environment)
+      }
     } else {
-      obj<-obj.environment[[objectnames]]
+      obj<-get(objectnames, envir = obj.environment)
     }
     archive_filename<-pathcat::path.cat(dirname(storagepath), archive_filename)
     job<-depwalker:::save.large.object(obj = obj, file = archive_filename, compress = compress,

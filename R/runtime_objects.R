@@ -259,59 +259,6 @@ modify_runtime_archive<-function(storagepath, obj.environment, addobjectnames=NU
                              tasktpath=tasktpath))
 }
 
-set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
-                              archive_filename, compress='gzip', wait_for='save',
-                              flag_use_tmp_storage=FALSE, parallel_cpus=NULL) {
-  if(is.null(objectnames)){
-    objectnames<-names(obj.environment)
-  }
-
-  archivepath<-pathcat::path.cat(dirname(tasktpath), archive_filename)
-  hashattrname<-getOption('reserved_attr_for_hash')
-  get_digest<-function(objectname, env) {
-    if(is.null(attr(env[[objname]],hashattrname))) {
-      hash<-calculate.object.digest(objectname, target.environment)
-    } else {
-      hash<-attr(env[[objname]],hashattrname)
-      setattr(env[[objname]], hashattrname, NULL)
-    }
-    return(hash)
-  }
-  digests<-purrr::map_chr(objectnames, get_digest, env=obj.environment)
-  sizes<-as.numeric(purrr::map_chr(objectnames, object.size, env=obj.environment))
-
-
-
-  if(length(objectnames)==0) {
-    if(file.exists(archivepath)) {
-      unlink(archivepath)
-      dbchunk<-data.table(objectnames=character(0), digest=character(0), size=numeric(0),
-                          single_object=logical(0),
-                          archive_filename=character(0))
-      return(list(job=NULL, dbchunk=dbchunk))
-    }
-  } else {
-    dbchunk<-data.table(objectnames=objectnames, digest=hashes, size=sizes,
-                        single_object=length(objectnames)==1,
-                        archive_filename=archive_filename)
-
-
-
-    if(length(objectnames)>1) {
-      obj<-as.list(obj.environment[objectnames])
-    } else {
-      obj<-obj.environment[[objectnames]]
-    }
-
-    job<-depwalker:::save.large.object(obj = obj, file = archive_filename, compress = compress,
-                                       wait_for = wait_for, flag_use_tmp_storage = flag_use_tmp_storage,
-                                       parallel_cpus = parallel_cpus, flag_detach = FALSE)
-    return(list(job=job, dbchunk=dbchunk))
-  }
-
-}
-
-
 #Function parses the argument generating named vector with keys objectnames
 parse_argument<-function(arg, objectnames, default_value) {
   argname<-substitute(arg)
