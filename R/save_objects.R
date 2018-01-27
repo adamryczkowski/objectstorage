@@ -140,12 +140,12 @@ save.large.object<-function(obj, file, compress='xz', wait_for=c('save','compres
 #In case of non-trivial run (the one that requires compressing the archive),
 #it uses the following arguments:
 #compress, wait_for, flag_use_tmp_storage and parallel_cpus
-modify_runtime_archive<-function(storagepath, obj.environment, addobjectnames=NULL,
+modify_runtime_archive<-function(storagepath, obj.environment, addobjectnames=character(0),
                                  removeobjectnames=character(0),
                                  archive_filename, compress='gzip', wait_for='save',
                                  flag_use_tmp_storage=FALSE, parallel_cpus=NULL) {
   if(is.null(addobjectnames)){
-    addobjectnames<-names(obj.environment)
+    addobjectnames<-character(0)
   }
   if(length(addobjectnames)==0) {
     addobjectnames<-character(0)
@@ -184,7 +184,7 @@ modify_runtime_archive<-function(storagepath, obj.environment, addobjectnames=NU
     #Makes no sense in adding and deleting the same object in one step
   }
 
-  idx<-dplyr::filter(list_runtime_objects(storagepath), archive_filename==archive_filename)
+  idx<-dplyr::filter(list_runtime_objects(storagepath), archive_filename==!!archive_filename)
   objs_to_leave<-setdiff(idx$objectnames, c(addobjectnames, removeobjectnames))
   objs_to_add<-c(addobjectnames,objs_to_leave)
   if(length(objs_to_leave)>0) {

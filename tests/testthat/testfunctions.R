@@ -1,7 +1,7 @@
 sample(c(letters, LETTERS, 0:9), 15)
 tmpdir<-file.path(tempfile('objectstorage.test.'), paste0(sample(c(letters, LETTERS, 0:9), 15),collapse=''))
 dir.create(tmpdir, showWarnings = FALSE, recursive = TRUE);
-system(paste0('nemo "', tmpdir, '"'))
+#system(paste0('nemo "', tmpdir, '"'))
 
 
 simple_storage<-function(nazwa='simple_storage') {
@@ -59,7 +59,7 @@ double_storage_ex<-function(nazwa='double_storage_ex'){
   add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
 
   env2<-new.env()
-  debugonce(load_objects)
+#  debugonce(load_objects)
   testthat::expect_true(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE))
   testthat::expect_equivalent(env, env2)
   return(storagepath)

@@ -6,7 +6,8 @@ library(testthat)
 source('testfunctions.R')
 
 test_that("Save simple forced object", {
-#  source('tests/testthat/testfunctions.R')
+  library(data.table)
+  #  source('tests/testthat/testfunctions.R')
   storagepath<-pathcat::path.cat(tmpdir, 'add_1_forced')
   env<-new.env()
   env$a<-100
@@ -43,7 +44,7 @@ test_that("Save simple forced object", {
                                                 archive_filename='add_1_default.rda', single_object=TRUE))
 
   env2<-new.env()
-  debugonce(load_objects)
+  #debugonce(load_objects)
   testthat::expect_true(load_objects(storagepath = storagepath, objectnames = 'a', env2, flag_double_check_digest = TRUE))
 
 }
@@ -73,7 +74,7 @@ test_that("Save two objects, default inference", {
   testthat::expect_equal(env2$b, env$b)
 
   env3<-new.env()
-  debugonce(load_objects)
+  #debugonce(load_objects)
   testthat::expect_true(load_objects(storagepath = storagepath, objectnames = 'a',target.environment =  env3, flag_double_check_digest = TRUE))
   load_objects(storagepath = storagepath, objectnames = 'a',target.environment =  env3, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(as.list(env3), list(a=100))
@@ -89,11 +90,11 @@ test_that("Two objects, one large, default inference", {
   # debugonce(infer_save_locations)
   ans<-infer_save_locations(storagepath, obj.environment=env)
   testthat::expect_false(is.null(ans))
-  debugonce(add_runtime_objects_internal)
+  #debugonce(add_runtime_objects_internal)
   add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
 
   env2<-new.env()
-  debugonce(load_objects)
+  #debugonce(load_objects)
   testthat::expect_true(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE))
   testthat::expect_equivalent(env, env2)
 }
@@ -118,5 +119,11 @@ test_that("Multiple objects that share common, to test naming", {
   #  debugonce(infer_save_locations)
   ans<-infer_save_locations(storagepath, obj.environment=env)
 
+
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, parallel_cpus = 0)
+  env2<-new.env()
+  load_objects(storagepath = storagepath, target.environment = env2, objectnames = ls(env), flag_double_check_digest = TRUE)
+  expect_equivalent(env2 ,env)
 }
 )
+

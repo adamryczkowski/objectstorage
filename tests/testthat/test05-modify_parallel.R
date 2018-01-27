@@ -1,8 +1,9 @@
-context("Modification of object storage")
+context("Modification of object storage in parallel")
 
 source('testfunctions.R')
-#source('tests/testthat/testfunctions.R')
+library(objectstorage)
 library(testthat)
+#source('tests/testthat/testfunctions.R')
 
 test_that("Updating single object", {
   storagepath<-simple_storage('update_1_obj')
@@ -10,7 +11,7 @@ test_that("Updating single object", {
   env$a<-'bla'
 #  debugonce(modify_runtime_objects)
 #  debugonce(add_runtime_objects_internal)
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = 'a', parallel_cpus = 0)
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = 'a', parallel_cpus = 1)
   env2<-new.env()
   load_objects(storagepath, objectnames = 'a', target.environment = env2, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(env2, env)
@@ -26,7 +27,7 @@ test_that("Updating single object in multi-object archive", {
   #  debugonce(add_runtime_objects_internal)
   #  debugonce(modify_runtime_archive)
 #  debugonce(set_runtime_archive)
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = 'a', parallel_cpus = 0)
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = 'a', parallel_cpus = 1)
   env2<-new.env()
   load_objects(storagepath, objectnames = 'a', target.environment = env2, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(env2, env)
@@ -43,19 +44,19 @@ test_that("Updating all objects in multi-object archive", {
   #  debugonce(add_runtime_objects_internal)
   #  debugonce(modify_runtime_archive)
   #  debugonce(set_runtime_archive)
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a'), parallel_cpus = 0)
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a'), parallel_cpus = 1)
   env2<-new.env()
   load_objects(storagepath, objectnames = c('a','b'), target.environment = env2, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(as.list(env2), list(a=env$a, b=101))
 
   env$a<-'bli'
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a','b'), parallel_cpus = 0)
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a','b'), parallel_cpus = 1)
   env2<-new.env()
   load_objects(storagepath, objectnames = c('a','b'), target.environment = env2, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(env2, env)
 
   env$a<-'blx'
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a','b'), parallel_cpus = 0)
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a','b'), parallel_cpus = 1)
   env2<-new.env()
   load_objects(storagepath, objectnames = c('a','b'), target.environment = env2, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(env2, env)
@@ -79,14 +80,14 @@ test_that("Updating small object in multi-object split archive", {
   #  debugonce(add_runtime_objects_internal)
   # debugonce(modify_runtime_archive)
   #  debugonce(set_runtime_archive)
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a'), parallel_cpus = 0)
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a'), parallel_cpus = 1)
   env2<-new.env()
   load_objects(storagepath, objectnames = c('a','b'), target.environment = env2, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(as.list(env2), list(a=env$a, b=ref_env$b))
 
   env$b<-'bli'
 #  debugonce(modify_runtime_objects)
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('b'), parallel_cpus = 0)
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('b'), parallel_cpus = 1)
   env2<-new.env()
   load_objects(storagepath, objectnames = c('a','b'), target.environment = env2, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(env2, env)
@@ -110,7 +111,7 @@ test_that("Updating large object in multi-object split archive", {
   # debugonce(modify_runtime_archive)
   #  debugonce(set_runtime_archive)
   #debugonce(modify_runtime_objects)
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('b'), parallel_cpus = 0)
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('b'), parallel_cpus = 1)
   env2<-new.env()
   load_objects(storagepath, objectnames = c('a','b'), target.environment = env2, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(as.list(env2), list(a=ref_env$a, b=env$b))
@@ -136,9 +137,10 @@ test_that("Updating two objects in multi-object archive", {
   # debugonce(modify_runtime_archive)
   #  debugonce(set_runtime_archive)
   #debugonce(modify_runtime_objects)
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a', 'b'), parallel_cpus = 0)
+  modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('a', 'b'), parallel_cpus = 1)
   env2<-new.env()
   load_objects(storagepath, objectnames = c('a','b'), target.environment = env2, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(as.list(env2), list(a=env$a, b=env$b))
+
 })
 

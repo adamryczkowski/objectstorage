@@ -190,7 +190,7 @@ infer_save_locations<-function(storagepath, objectnames=NULL, obj.environment,
     out<-newout
   }
 
-  for(i in length(out)) {
+  for(i in seq_along(out)) {
     item<-out[[i]]
     if(length(unique(item$compress))!=1) {
       stop(paste0("Non-unique elements in the argument compress for runtime.object saved in ",
@@ -347,3 +347,4 @@ load_objects<-function(storagepath, objectnames, target.environment, flag_double
   }
   return(TRUE)
 }
+

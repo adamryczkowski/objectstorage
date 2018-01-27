@@ -25,13 +25,15 @@
 #' @export
 
 create_objectstorage<-function(storagepath) {
-  idx<-list_runtime_objects(storagepath)
-  if(is.null(idx)) {
+  path<-get_runtime_index_path(storagepath)
+  if(!file.exists(path)) {
     idx<-data.table(objectnames=character(0), digest=character(0),
                     size=numeric(0), archive_filename=character(0),
                     single_object=logical(0))
     path<-get_runtime_index_path(storagepath)
     saveRDS(object = idx, file = path)
+  } else {
+    idx<-list_runtime_objects(storagepath)
   }
   return(idx)
 }
@@ -156,7 +158,7 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
     removeobjectnames_db<-data.table(objectnames=removeobjectnames)
     remove_objects_db<-rbind(
       dplyr::select(
-        dplyr::filter(changed_objects_db, archive_filename_new!=archive_filename_new),
+        dplyr::filter(changed_objects_db, archive_filename_new!=archive_filename_old),
         objectnames, archive_filename=archive_filename_old),
       dplyr::select(
         dplyr::inner_join(oldidx, removeobjectnames_db, by=c(objectnames='objectnames')),
@@ -168,7 +170,7 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
       dplyr::anti_join(archives_db_flat, oldidx, by=c(objectnames='objectnames')),
       objectnames, archive_filename)
     different_objects_db<-dplyr::select(
-      dplyr::filter(changed_objects_db, archive_filename_old==archive_filename_new & digest_old!=digest_new),
+      dplyr::filter(changed_objects_db, digest_old!=digest_new),
       objectnames, archive_filename=archive_filename_new)
     # if(nrow(different_objects_db)>0) {
     #   fn_get_digest<-function(objectname) {
@@ -233,8 +235,8 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
                   SIMPLIFY=FALSE)
     } else {
       ans<-parallel::mcmapply(modify_runtime_archive,
-                              addobjectnames=change_objects_db_nested$addobjectnames,
-                              removeobjectnames=change_objects_db_nested$removeobjectnames,
+                              addobjectnames=change_objects_db_nested$objectnames_new,
+                              removeobjectnames=change_objects_db_nested$objectnames_remove,
                               archive_filename=change_objects_db_nested$archive_filename,
                               compress=change_objects_db_nested$compress,
                               flag_use_tmp_storage=change_objects_db_nested$flag_use_tmp_storage,
@@ -250,9 +252,11 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
       oldidx<-rbind(oldidx, ans[[i]]$dbchunk)
     }
     if(length(jobs)>0) {
+
+      pb <- txtProgressBar(min = 0, max = length(jobs), style = 3)
       cat("Waiting for saves to finish..")
-      parallel::mccollect(jobs, wait=TRUE, intermediate = function() {cat('.')})
-      cat("\n")
+      parallel::mccollect(jobs, wait=TRUE, intermediate = function(res) {setTxtProgressBar(pb, length(res))})
+      close(pb)
     }
     update_runtime_objects_index(storagepath = storagepath, newidx=oldidx)
   }, finally=release.lock.file(storagepath))

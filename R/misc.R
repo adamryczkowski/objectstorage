@@ -28,7 +28,7 @@ lists_to_df<-function(l, list_columns=character(0)) {
       set(dt, i, cn, val)
     }
   }
-  dt[,..delete:=NULL]
+  dt[['..delete']]<-NULL
   return(dt)
 }
 
