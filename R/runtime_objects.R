@@ -14,7 +14,13 @@ update_runtime_objects_index<-function(storagepath, newidx) {
   if(file.exists(path)) {
     unlink(path)
   }
-  saveRDS(newidx, path)
+  objects<-newidx$objectname
+  if(sum(duplicated(objects))==0) {
+    saveRDS(newidx, path)
+  } else {
+    browser()
+    stop("Duplication in the objectnames in the index that is about to be written!")
+  }
 }
 
 

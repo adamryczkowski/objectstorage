@@ -87,7 +87,6 @@ list_runtime_objects<-function(storagepath) {
 
 # Na wejściu otrzymujemy listę archives list, która dla każdego archiwum zawiera listę z elementami
 # objectnames - lista objektów, archive_filename - ścieżka do pliku archiwum, compress, flag_use_tmp_storage
-
 modify_runtime_objects<-function(storagepath, obj.environment, objects_to_add=NULL, objects_to_remove=character(0),
                                  flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
                                  forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
@@ -262,3 +261,43 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
   }, finally=release.lock.file(storagepath))
 }
 
+#' Returns mtime of last modification of the \code{objectstorage}
+#'
+#' @param storagepath Path with the storage.
+#' @return Returns data stamp of typ \code{c("POSIXct", "POSIXt")} of the modification time.
+#' @export
+get_mtime<-function(storagepath) {
+  path<-get_runtime_index_path(storagepath=storagepath)
+  if(file.exists(path)) {
+    return(file.mtime(path))
+  } else {
+    return(NA)
+  }
+}
+
+#' Returns md5 hash of all the objects in the \code{objectstorage} stored in disk.
+#'
+#' This function is almost instantenous even for large objects, because it doesn't
+#' read the actual objects, it reads their hashes from the description file.
+#'
+#' Actually this ability to quickly get the cryptographic hash of all objects contained within
+#' the archive is a motivation behind
+#'
+#' @param storagepath Path with the storage.
+#' @return Returns data stamp of typ \code{c("POSIXct", "POSIXt")} of the modification time.
+#' @export
+get_full_digest<-function(storagepath) {
+  path<-get_runtime_index_path(storagepath=storagepath)
+  if(file.exists(path)) {
+    idx<-list_runtime_objects(storagepath = storagepath)
+    objectnames<-idx$objectname
+    digests<-idx$digest
+    ord<-order(objectnames)
+    digests<-digests[ord]
+    objectnames<-objectnames[ord]
+    todigest<-setNames(digests, nm = objectnames)
+    return(digest::digest(todigest))
+  } else {
+    return(NA)
+  }
+}
