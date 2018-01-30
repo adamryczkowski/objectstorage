@@ -3,14 +3,14 @@
 .onLoad	<-	function(libname,	pkgname)	{
   op	<-	options()
   op.objectstorage	<-	list(
-    lock.extension	=	'.lock',
-    index.extension = '.rdx',
-    default_archive.extension = '.rda', #Used only for the main archive for small objects
-    reserved_attr_for_hash ='..hash',
-    prefix_for_automatic_dedicated_archive_names='_',
-    default_archive.name = '_default_archive.rda', #Name of the folder to save objects if more than one
-    default.lock.time = 3600, #1 hour
-    tune.threshold_objsize_for_dedicated_archive = 20000 #Results from `studium_save` multiplied by 4.
+    objectstorage.lock_extension	=	'.lock',
+    objectstorage.index_extension = '.rdx',
+    objectstorage.default_archive.extension = '.rda', #Used only for the main archive for small objects
+    objectstorage.reserved_attr_for_hash ='..hash',
+    objectstorage.prefix_for_automatic_dedicated_archive_names='_',
+    objectstorage.default_archive_name = '_default_archive.rda', #Name of the folder to save objects if more than one
+    objectstorage.default_lock_time = 3600, #1 hour
+    objectstorage.tune_threshold_objsize_for_dedicated_archive = 20000 #Results from `studium_save` multiplied by 4.
   )
   toset	<-	!(names(op.objectstorage)	%in%	names(op))
   if(any(toset))	options(op.objectstorage[toset])
@@ -95,7 +95,6 @@ list_runtime_objects<-function(storagepath) {
 modify_runtime_objects<-function(storagepath, obj.environment, objects_to_add=NULL, objects_to_remove=character(0),
                                  flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
                                  forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
-                                 flag_no_nested_folder=FALSE,
                                  locktimeout=NULL,
                                  wait_for='save',parallel_cpus=NULL)
 {
@@ -104,8 +103,70 @@ modify_runtime_objects<-function(storagepath, obj.environment, objects_to_add=NU
                                       flag_forced_save_filenames = flag_forced_save_filenames,
                                       flag_use_tmp_storage = flag_use_tmp_storage,
                                       forced_archive_paths = forced_archive_paths,
-                                      compress = compress, large_archive_prefix = large_archive_prefix,
-                                      flag_no_nested_folder = flag_no_nested_folder)
+                                      compress = compress, large_archive_prefix = large_archive_prefix)
+
+  add_runtime_objects_internal(storagepath = storagepath, obj.environment = obj.environment,
+                               archives_list = archives_list, parallel_cpus = parallel_cpus,
+                               removeobjectnames = objects_to_remove,
+                               locktimeout = locktimeout, wait_for = wait_for)
+  return(storagepath)
+}
+
+
+#' Sets new contents of the objectstorage.
+#'
+#' The input objects will be compared with the stored objects, and replaced only when needed
+#'
+#' @param storagepath Path with the storage.
+#' @param obj.environment Environment or named list with the objects
+#' @param objectnames Character vector with the names of the objects to add. Defaults to all objects in the
+#' \code{obj.environment}.
+#' @param flag_forced_save_filenames Boolean vector with the length equal to objectnames, or
+#'        named vector with objectnames as keys, or single value specifying whether to put a specific object
+#'        in its own dedicated archive
+#' @param forced_archive_paths Character vector with the length equal to objectnames, or
+#'        named vector with objectnames as keys, or single value specifying custom path of archive
+#'        where a specific object(s) will saved.
+#' @param flag_use_tmp_storage Boolean vector with the length equal to objectnames, or
+#'        named vector with objectnames as keys, or single value specifying whether if the temporary
+#'        save file should be created in the fast /tmp directory first, and only then compressed into
+#'        the target place.
+#' @param compress Character vector with the length equal to objectnames, or
+#'        named vector with objectnames as keys, or single value specifying compression algorithm for
+#'        each object. Compression will be applied archive-wise.
+#' @param large_archive_prefix If set, all new archives for large objects will be saved with this prefix, otherwise in the
+#' \code{dirname(storagepath)}.
+#' \code{storagepath}. It is up to the user to make sure this directory is empty and no file name conflicts will
+#' arise.
+#' @return Returns `data.frame` with the following columns:
+#' \describe{
+#' \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
+#' \item{\strong{digest}}{String with the digest of the object.}
+#' \item{\strong{size}}{Numeric value with the size of the stored object.}
+#' \item{\strong{archive_filename}}{Path where the object is stored absolute or relative to the storage path.}
+#' \item{\strong{single_object}}{Logical. \code{TRUE} if the archive contain only this one object. Otherwise
+#' archive contains named list of objects.}
+#' \item{\strong{compress}}{Type of compression used to store this individual object}
+#' }
+#' @export
+
+# Na wejściu otrzymujemy listę archives list, która dla każdego archiwum zawiera listę z elementami
+# objectnames - lista objektów, archive_filename - ścieżka do pliku archiwum, compress, flag_use_tmp_storage
+set_runtime_objects<-function(storagepath, obj.environment, objectnames=NULL,
+                                 flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
+                                 forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
+                                 locktimeout=NULL,
+                                 wait_for='save',parallel_cpus=NULL)
+{
+  archives_list<-infer_save_locations(storagepath = storagepath, objectnames = objectnames,
+                                      obj.environment = obj.environment,
+                                      flag_forced_save_filenames = flag_forced_save_filenames,
+                                      flag_use_tmp_storage = flag_use_tmp_storage,
+                                      forced_archive_paths = forced_archive_paths,
+                                      compress = compress, large_archive_prefix = large_archive_prefix)
+
+  oldidx<-list_runtime_objects(storagepath = storagepath)
+  objects_to_remove<-setdiff(oldidx$objectrecords, objectnames)
 
   add_runtime_objects_internal(storagepath = storagepath, obj.environment = obj.environment,
                                archives_list = archives_list, parallel_cpus = parallel_cpus,
@@ -297,7 +358,7 @@ get_full_digest<-function(storagepath) {
   path<-get_runtime_index_path(storagepath=storagepath)
   if(file.exists(path)) {
     idx<-list_runtime_objects(storagepath = storagepath)
-    objectnames<-idx$objectname
+    objectnames<-idx$objectnames
     digests<-idx$digest
     ord<-order(objectnames)
     digests<-digests[ord]
@@ -306,5 +367,27 @@ get_full_digest<-function(storagepath) {
     return(digest::digest(todigest))
   } else {
     return(NA)
+  }
+}
+
+#' Returns md5 hash of all the objects in the \code{objectstorage} stored in disk.
+#'
+#' This function is almost instantenous even for large objects, because it doesn't
+#' read the actual objects, it reads their hashes from the description file.
+#'
+#' Actually this ability to quickly get the cryptographic hash of all objects contained within
+#' the archive is a motivation behind
+#'
+#' @param storagepath Path with the storage.
+#' @return Returns data stamp of typ \code{c("POSIXct", "POSIXt")} of the modification time.
+#' @export
+get_object_digest<-function(storagepath, objectnames) {
+  path<-get_runtime_index_path(storagepath=storagepath)
+  if(file.exists(path)) {
+    idx<-list_runtime_objects(storagepath = storagepath)
+    out<-dplyr::left_join(tibble::tibble(objectnames=objectnames), idx, by=c(objectnames='objectnames'))
+    return(out$digest)
+  } else {
+    stop(paste("There is no object storage in ", storagepath))
   }
 }

@@ -85,7 +85,7 @@ test_that("Multiple objects that share common, to test naming", {
   storagepath<-pathcat::path.cat(tmpdir, 'test_infer')
 
   objnames<-unique(purrr::map_chr(1:20, ~paste0(sample(c(LETTERS, letters),2), collapse=''),10))
-  objsizes<-pmin(round(rexp(length(objnames),1/100000)/20), getOption('tune.threshold_objsize_for_dedicated_archive'))
+  objsizes<-pmin(round(rexp(length(objnames),1/100000)/20), getOption('objectstorage.tune_threshold_objsize_for_dedicated_archive'))
   objsizes<-pmax(objsizes-96-8, 1)
 
   env<-new.env()
@@ -94,14 +94,14 @@ test_that("Multiple objects that share common, to test naming", {
     objsize<-objsizes[[i]]
     assign(pname, paste0(sample(LETTERS, objsize, replace = TRUE), collapse=''), envir = env)
   }
-  assign('a', paste0(sample(LETTERS, getOption('tune.threshold_objsize_for_dedicated_archive'), replace = TRUE), collapse=''), envir = env)
+  assign('a', paste0(sample(LETTERS, getOption('objectstorage.tune_threshold_objsize_for_dedicated_archive'), replace = TRUE), collapse=''), envir = env)
 
 
 #  debugonce(infer_save_locations)
   ans<-infer_save_locations(storagepath, obj.environment=env)
   testthat::expect_false(is.null(ans))
   testthat::expect_equal(length(ans), 2)
-  filename<-paste0(getOption('prefix_for_automatic_dedicated_archive_names'),'a.rds')
+  filename<-paste0(getOption('objectstorage.prefix_for_automatic_dedicated_archive_names'),'a.rds')
   testthat::expect_true(filename %in% names(ans))
   testthat::expect_equivalent(ans[[filename]], list(archive_filename=filename,
                                                     objectnames='a',
@@ -110,3 +110,4 @@ test_that("Multiple objects that share common, to test naming", {
 
 }
 )
+

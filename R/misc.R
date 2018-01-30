@@ -1,3 +1,10 @@
+#' Transforms list of records into a data.frame.
+#'
+#' @param l List of records. It is assumed, that all items with the same name share the same data type
+#' @param list_columns Character vector with the names of the fields that should be treated as a nested lists.
+#'                     They may contain heterogenous contents or simply be atomic types with length more than 1.
+#' @return Returns a tibble
+#' @export
 lists_to_df<-function(l, list_columns=character(0)) {
   cns<-names(l[[1]])
   nrow<-length(l)
@@ -49,9 +56,6 @@ lists_to_df<-function(l, list_columns=character(0)) {
 #' @return Lowercase MD5 string with the digest of the object
 #'
 #'
-#Funkcja kalkuluje object.digest obiektu. Nie wkłada go do parentrecord.
-#Dla obiektów typu data.frame używany jest szczególnie wydajny pamięciowo
-#algorytm, który liczy digest zmienna-po-zmiennej
 calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_attrib=TRUE, flag_add_attrib=FALSE)
 {
   if (!is.character(objectname))
@@ -63,8 +67,8 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
 
 
   if(flag_use_attrib) {
-    if(!is.null(attr(get(objectname, envir = target.environment), getOption('reserved_attr_for_hash')))) {
-      return(attr(get(objectname, envir = target.environment), getOption('reserved_attr_for_hash')))
+    if(!is.null(attr(get(objectname, envir = target.environment), getOption('objectstorage.reserved_attr_for_hash')))) {
+      return(attr(get(objectname, envir = target.environment), getOption('objectstorage.reserved_attr_for_hash')))
     }
   }
 
@@ -85,7 +89,7 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
   }
   if(flag_add_attrib) {
     if(objectname %in% names(target.environment)) { #It may be in the parent of the environment, and in this case we will not touch it
-      data.table::setattr(target.environment[[objectname]], getOption('reserved_attr_for_hash'), d)
+      data.table::setattr(target.environment[[objectname]], getOption('objectstorage.reserved_attr_for_hash'), d)
     }
   }
   assertDigest(d)
@@ -95,7 +99,7 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
 clear_digest_cache<-function(objectname, envir) {
   while(!identical(envir, .GlobalEnv)) {
     if(objectname %in% names(envir)) {
-      setattr(envir[[objectname]], getOption('reserved_attr_for_hash'), NULL)
+      setattr(envir[[objectname]], getOption('objectstorage.reserved_attr_for_hash'), NULL)
       return(TRUE)
     }
     envir<-parent.env(envir)

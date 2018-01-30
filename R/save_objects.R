@@ -228,7 +228,7 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
   }
 
   archivepath<-pathcat::path.cat(dirname(storagepath), archive_filename)
-  hashattrname<-getOption('reserved_attr_for_hash')
+  hashattrname<-getOption('objectstorage.reserved_attr_for_hash')
   get_digest<-function(objectname, env) {
     hash<-calculate.object.digest(objectname, obj.environment,
                                   flag_use_attrib = TRUE, flag_add_attrib = FALSE)

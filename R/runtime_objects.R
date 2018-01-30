@@ -26,7 +26,7 @@ update_runtime_objects_index<-function(storagepath, newidx) {
 
 
 get_runtime_index_path<-function(storagepath) {
-  ext<-getOption('index.extension')
+  ext<-getOption('objectstorage.index_extension')
   path<-pathcat::path.cat(getwd(), paste0(storagepath, ext))
   return(path)
 }
@@ -79,7 +79,7 @@ remove_runtime_object<-function(storagepath, objname) {
 #' @param large_archive_prefix If set, all new archives for large objects will be saved with this prefix, otherwise in the
 #' \code{dirname(storagepath)}.
 #' \code{storagepath}. It is up to the user to make sure this directory is empty and no file name conflicts will
-#' arise. By default it saves in the child directory controlled by the option \code{getOption('folder_name')}.
+#' arise.
 #' @return Returns list with one element for each archive to touch. Each element will be a list with the
 #' following properties
 #' \describe{
@@ -91,8 +91,7 @@ remove_runtime_object<-function(storagepath, objname) {
 #' @export
 infer_save_locations<-function(storagepath, objectnames=NULL, obj.environment,
                                flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
-                               forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
-                               flag_no_nested_folder=FALSE)
+                               forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL)
 {
   if(is.null(objectnames)) {
     objectnames<-names(obj.environment)
@@ -136,9 +135,9 @@ infer_save_locations<-function(storagepath, objectnames=NULL, obj.environment,
     flag_use_tmp_storage<-flag_use_tmp_storage[default_objects]
     objectnames<-default_objects
     objectsizes<-purrr::map_dbl(objectnames, ~object.size(obj.environment[[.]]))
-    flag_forced_save_filenames[objectsizes > getOption('tune.threshold_objsize_for_dedicated_archive')]<-TRUE
+    flag_forced_save_filenames[objectsizes > getOption('objectstorage.tune_threshold_objsize_for_dedicated_archive')]<-TRUE
     number_of_files<-sum(flag_forced_save_filenames)
-    generic_file_name<-pathcat::path.cat(dirname(storagepath), paste0(basename(storagepath), getOption('default_archive.extension')))
+    generic_file_name<-pathcat::path.cat(dirname(storagepath), paste0(basename(storagepath), getOption('objectstorage.default_archive.extension')))
 
     generic_file_name<-pathcat::make.path.relative(dirname(storagepath), generic_file_name)
 
@@ -151,7 +150,7 @@ infer_save_locations<-function(storagepath, objectnames=NULL, obj.environment,
     if(sum(flag_forced_save_filenames)>0) {
       separate_objects<-objectnames[flag_forced_save_filenames]
       separate_paths<-pathcat::path.cat(dirname(storagepath),
-                                        paste0(getOption('prefix_for_automatic_dedicated_archive_names'),
+                                        paste0(getOption('objectstorage.prefix_for_automatic_dedicated_archive_names'),
                                                separate_objects, ".rds"))
       separate_paths<-pathcat::make.path.relative(dirname(storagepath), separate_paths)
       separate_compress<-compress[flag_forced_save_filenames]
