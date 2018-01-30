@@ -14,7 +14,8 @@ simple_storage<-function(nazwa='simple_storage') {
   sp<-list_runtime_objects(storagepath = storagepath)
   testthat::expect_equivalent(as.list(sp), list(objectnames='a', digest=digest::digest(env$a),
                                                 size=as.numeric(object.size(env$a)),
-                                                archive_filename=paste0(nazwa, '.rda'), single_object=TRUE))
+                                                archive_filename=paste0(nazwa, '.rda'), single_object=TRUE,
+                                                compres='gzip', flag_use_tmp_storage=FALSE))
 
   env2<-new.env()
   testthat::expect_true(load_objects(storagepath = storagepath, objectnames = 'a', env2, flag_double_check_digest = TRUE))
@@ -33,7 +34,8 @@ double_storage<-function(nazwa="double_storage") {
 
   testthat::expect_equivalent(as.list(sp), list(objectnames=c('a', 'b'), digest=c(digest::digest(env$a), digest::digest(env$b)),
                                                 size=as.numeric(c(object.size(env$a), object.size(env$b))),
-                                                archive_filename=rep(paste0(nazwa, '.rda'),2), single_object=rep(FALSE,2)))
+                                                archive_filename=rep(paste0(nazwa, '.rda'),2), single_object=rep(FALSE,2),
+                                                compress=c('gzip', 'gzip'), flag_use_tmp_storage=c(FALSE,FALSE)))
 
   env2<-new.env()
   testthat::expect_true(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE))

@@ -27,14 +27,20 @@
 create_objectstorage<-function(storagepath) {
   path<-get_runtime_index_path(storagepath)
   if(!file.exists(path)) {
-    idx<-data.table(objectnames=character(0), digest=character(0),
-                    size=numeric(0), archive_filename=character(0),
-                    single_object=logical(0))
+    idx<-empty_objectstorage()
     path<-get_runtime_index_path(storagepath)
     saveRDS(object = idx, file = path)
   } else {
     idx<-list_runtime_objects(storagepath)
   }
+  return(idx)
+}
+
+empty_objectstorage<-function() {
+  idx<-data.table(objectnames=character(0), digest=character(0),
+                  size=numeric(0), archive_filename=character(0),
+                  single_object=logical(0), compress=character(0),
+                  flag_use_tmp_storage=logical(0))
   return(idx)
 }
 
@@ -57,9 +63,7 @@ list_runtime_objects<-function(storagepath) {
     idx<-readRDS(path)
     return(idx)
   } else {
-    return(data.table(objectnames=character(0), digest=character(0),
-                      size=numeric(0), archive_filename=character(0),
-                      single_object=logical(0)))
+    return(empty_objectstorage())
   }
 }
 
@@ -82,6 +86,7 @@ list_runtime_objects<-function(storagepath) {
 #' \item{\strong{archive_filename}}{Path where the object is stored absolute or relative to the storage path.}
 #' \item{\strong{single_object}}{Logical. \code{TRUE} if the archive contain only this one object. Otherwise
 #' archive contains named list of objects.}
+#' \item{\strong{compress}}{Type of compression used to store this individual object}
 #' }
 #' @export
 
@@ -155,21 +160,23 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
     #We remove objects that are contained in the `removeobjectnames` argument,
     #plus objects that changed the archive
     removeobjectnames_db<-data.table(objectnames=removeobjectnames)
+    movedobjects<-dplyr::select(
+      dplyr::filter(changed_objects_db, archive_filename_new!=archive_filename_old),
+      objectnames, archive_filename=archive_filename_old)
     remove_objects_db<-rbind(
-      dplyr::select(
-        dplyr::filter(changed_objects_db, archive_filename_new!=archive_filename_old),
-        objectnames, archive_filename=archive_filename_old),
+      movedobjects,
       dplyr::select(
         dplyr::inner_join(oldidx, removeobjectnames_db, by=c(objectnames='objectnames')),
         objectnames, archive_filename)
     )
     #We add objects that are new
     #plus those who are common and have their digest changed
+    #plus those, who are moved
     new_objects_db<-dplyr::select(
       dplyr::anti_join(archives_db_flat, oldidx, by=c(objectnames='objectnames')),
       objectnames, archive_filename)
     different_objects_db<-dplyr::select(
-      dplyr::filter(changed_objects_db, digest_old!=digest_new),
+      dplyr::filter(changed_objects_db, digest_old!=digest_new | archive_filename_new!=archive_filename_old),
       objectnames, archive_filename=archive_filename_new)
     # if(nrow(different_objects_db)>0) {
     #   fn_get_digest<-function(objectname) {

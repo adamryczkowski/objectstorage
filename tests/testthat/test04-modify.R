@@ -85,7 +85,7 @@ test_that("Updating small object in multi-object split archive", {
   testthat::expect_equivalent(as.list(env2), list(a=env$a, b=ref_env$b))
 
   env$b<-'bli'
-#  debugonce(modify_runtime_objects)
+  #debugonce(modify_runtime_objects)
   modify_runtime_objects(storagepath = storagepath, obj.environment = env, objects_to_add = c('b'), parallel_cpus = 0)
   env2<-new.env()
   load_objects(storagepath, objectnames = c('a','b'), target.environment = env2, flag_double_check_digest = TRUE)

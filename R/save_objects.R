@@ -185,6 +185,14 @@ modify_runtime_archive<-function(storagepath, obj.environment, addobjectnames=ch
   }
 
   idx<-dplyr::filter(list_runtime_objects(storagepath), archive_filename==!!archive_filename)
+  if(is.na(compress)) {
+    if(nrow(idx)==0) {
+      browser()
+      stop("Attempt to remove a last object of the archive instead of simply deleting its file")
+    }
+    compress<-idx$compress[[1]]
+    flag_use_tmp_storage<-idx$flag_use_tmp_storage[[1]]
+  }
   objs_to_leave<-setdiff(idx$objectnames, c(addobjectnames, removeobjectnames))
   objs_to_add<-c(addobjectnames,objs_to_leave)
   if(length(objs_to_leave)>0) {
@@ -246,15 +254,14 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
   if(length(objectnames)==0) {
     if(file.exists(archivepath)) {
       unlink(archivepath)
-      dbchunk<-data.table(objectnames=character(0), digest=character(0), size=numeric(0),
-                          single_object=logical(0),
-                          archive_filename=character(0))
+      dbchunk<-empty_objectstorage()
       return(list(job=NULL, dbchunk=dbchunk))
     }
   } else {
     dbchunk<-data.table(objectnames=objectnames, digest=digests, size=sizes,
                         single_object=length(objectnames)==1,
-                        archive_filename=archive_filename)
+                        archive_filename=archive_filename,
+                        compress=compress, flag_use_tmp_storage=flag_use_tmp_storage)
 
 
 

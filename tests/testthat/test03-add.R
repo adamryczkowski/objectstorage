@@ -20,7 +20,8 @@ test_that("Save simple forced object", {
   sp<-list_runtime_objects(storagepath = storagepath)
   testthat::expect_equivalent(as.list(sp), list(objectnames='a', digest=digest::digest(env$a),
                                                 size=as.numeric(object.size(env$a)),
-                                                archive_filename='a.rds', single_object=TRUE))
+                                                archive_filename='a.rds', single_object=TRUE,
+                                                compress='gzip', flag_use_tmp_storage=FALSE))
 
   env2<-new.env()
   expect_true(load_objects(storagepath = storagepath, objectnames = 'a', env2, flag_double_check_digest = TRUE))
@@ -41,7 +42,8 @@ test_that("Save simple forced object", {
   sp<-list_runtime_objects(storagepath = storagepath)
   testthat::expect_equivalent(as.list(sp), list(objectnames='a', digest=digest::digest(env$a),
                                                 size=as.numeric(object.size(env$a)),
-                                                archive_filename='add_1_default.rda', single_object=TRUE))
+                                                archive_filename='add_1_default.rda', single_object=TRUE,
+                                                compress='gzip', flag_use_tmp_storage=FALSE))
 
   env2<-new.env()
   #debugonce(load_objects)
@@ -66,7 +68,8 @@ test_that("Save two objects, default inference", {
 
   testthat::expect_equivalent(as.list(sp), list(objectnames=c('a', 'b'), digest=c(digest::digest(env$a), digest::digest(env$b)),
                                                 size=as.numeric(c(object.size(env$a), object.size(env$b))),
-                                                archive_filename=rep('add_2_default.rda',2), single_object=rep(FALSE,2)))
+                                                archive_filename=rep('add_2_default.rda',2), single_object=rep(FALSE,2),
+                                                compress=c('gzip', 'gzip'), flag_use_tmp_storage=c(FALSE,FALSE)))
 
   env2<-new.env()
   testthat::expect_true(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE))
