@@ -55,7 +55,7 @@ lists_to_df<-function(l, list_columns=character(0)) {
 #'
 #' @return Lowercase MD5 string with the digest of the object
 #'
-#'
+#' @export
 calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_attrib=TRUE, flag_add_attrib=FALSE)
 {
   if (!is.character(objectname))

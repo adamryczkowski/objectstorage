@@ -264,7 +264,14 @@ modify_runtime_archive<-function(storagepath, obj.environment, addobjectnames=NU
                              tasktpath=tasktpath))
 }
 
-#Function parses the argument generating named vector with keys objectnames
+#'Function parses the argument generating named vector with keys objectnames
+#'
+#' @param arg The argument to parse. Can be a single value, vector of lenght equal to
+#'        the length of \code{objectnames} or named vector with keys from \code{objectnames}.
+#' @param objectnames Objectnames that sets the basis for the intepretation of the \code{arg}
+#' @param default_value Value in case \code{arg} is a named vector with some \code{objectnames}
+#'        missing its values.
+#' @export
 parse_argument<-function(arg, objectnames, default_value) {
   argname<-substitute(arg)
   if(is.null(arg)) {
