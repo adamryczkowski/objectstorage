@@ -27,7 +27,12 @@ update_runtime_objects_index<-function(storagepath, newidx) {
 
 get_runtime_index_path<-function(storagepath) {
   ext<-getOption('objectstorage.index_extension')
-  path<-pathcat::path.cat(getwd(), paste0(storagepath, ext))
+  if(!stringr::str_detect(storagepath, stringr::regex(paste0(ext, '$')))) {
+    path<-paste0(storagepath, ext)
+  } else {
+    path<-storagepath
+  }
+  path<-pathcat::path.cat(getwd(), path)
   return(path)
 }
 
