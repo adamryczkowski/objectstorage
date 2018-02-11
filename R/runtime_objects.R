@@ -27,7 +27,8 @@ update_runtime_objects_index<-function(storagepath, newidx) {
 
 get_runtime_index_path<-function(storagepath) {
   ext<-getOption('objectstorage.index_extension')
-  if(!stringr::str_detect(storagepath, stringr::regex(paste0(ext, '$')))) {
+  ext2<-stringr::str_replace(ext, pattern=stringr::fixed('.'), replacement = '\\.')
+  if(!stringr::str_detect(storagepath, stringr::regex(paste0(ext2, '$')))) {
     path<-paste0(storagepath, ext)
   } else {
     path<-storagepath
