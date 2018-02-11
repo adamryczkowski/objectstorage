@@ -77,7 +77,8 @@ list_runtime_objects<-function(storagepath) {
 #' \code{obj.environment}.
 #' @param removeobjectnames Character vector with the names of the objects to remove. Cannot contain objects
 #' listed in \code{addobjectnames}.
-#' @param archive_filename
+#' @param archive_filename Optional character vector with custom paths to the archives. Can be a single character object,
+#'        vector with the size of \code{objects_to_add} or named vector with keys from \code{objects_to_add}.
 #' @return Returns `data.frame` with the following columns:
 #' \describe{
 #' \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
@@ -110,6 +111,19 @@ modify_runtime_objects<-function(storagepath, obj.environment, objects_to_add=NU
                                removeobjectnames = objects_to_remove,
                                locktimeout = locktimeout, wait_for = wait_for)
   return(storagepath)
+}
+
+
+#' Removes everything from disk
+#'
+#' @param storagepath Path to the storage
+#' @export
+
+remove_all<-function(storagepath) {
+  all_objects<-list_runtime_objects(storagepath = storagepath)$objectname
+  modify_runtime_objects(storagepath, objects_to_remove = all_objects)
+  path<-get_runtime_index_path(storagepath)
+  unlink(path)
 }
 
 

@@ -61,7 +61,7 @@ remove_runtime_object<-function(storagepath, objname) {
 #' non-mentioned objects will be assumed value \code{NA} (i.e. not having forced filename).
 #' @param flag_use_tmp_storage Relevant only for \code{xz} compression with the external tool \code{pxz}.
 #' Normally the object will be quickly saved without compression, then compressed in the background
-#' and at the end the filenames will be swapped. Setting this flag will force saving in the quick \code{\tmp}
+#' and at the end the filenames will be swapped. Setting this flag will force saving in the quick \code{\\tmp}
 #' directory, instead of the target path. It is usefull if the target path is very slow (perhaps a distant
 #' network share).
 #' Value can be either single boolean, or vector of booleans with the same size as

@@ -1,9 +1,9 @@
 Package: objectstorage
 Type: Package
 Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
+Version: 0.9.0
+Author: Adam Ryczkowski
+Maintainer: Adam Ryczkowski <adam@statystyka.net>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
 License: What license is it under?
@@ -22,3 +22,4 @@ Depends:
     data.table
 Remotes:
 	 adamryczkowski/pathcat
+RoxygenNote: 6.0.1

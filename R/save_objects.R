@@ -31,7 +31,7 @@ wait.for.save<-function(path, name, timeout=30*60)
 #' newly created file
 #' @return parallel job with the backgroud save, if wait is not 'none'
 #' @export
-save.large.object<-function(obj, file, compress='xz', wait_for=c('save','compress','none'),
+save_large_object<-function(obj, file, compress='xz', wait_for=c('save','compress','none'),
                             flag_use_tmp_storage=FALSE, fn_to_run_after_save=NULL,
                             fn_to_run_after_compress=NULL, parallel_cpus=NULL, flag_detach=FALSE) {
   #Stage2 jest wykonywany w tle nawet wtedy, gdy wait=TRUE. Nie będzie wykonany tylko wtedy, gdy compress=FALSE
@@ -274,9 +274,9 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
       obj<-get(objectnames, envir = obj.environment)
     }
     archive_filename<-pathcat::path.cat(dirname(storagepath), archive_filename)
-    job<-depwalker:::save.large.object(obj = obj, file = archive_filename, compress = compress,
-                                       wait_for = wait_for, flag_use_tmp_storage = flag_use_tmp_storage,
-                                       parallel_cpus = parallel_cpus, flag_detach = FALSE)
+    job<-save_large_object(obj = obj, file = archive_filename, compress = compress,
+                           wait_for = wait_for, flag_use_tmp_storage = flag_use_tmp_storage,
+                           parallel_cpus = parallel_cpus, flag_detach = FALSE)
     return(list(job=job, dbchunk=dbchunk))
   }
 
