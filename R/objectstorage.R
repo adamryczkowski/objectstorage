@@ -413,7 +413,7 @@ get_object_digest<-function(storagepath, objectnames) {
 #' @param objectnames Vector with names of objects to load. Defaults to all objects
 #' @return Nothing (besides the \code{envir}). Environments get updated by reference.
 #' @export
-load_objects<-function(storagepath, envir=.GlobalEnv, objectnames=NULL) {
+load_objects<-function(storagepath, envir=.GlobalEnv, objectnames=NULL, aliasnames=NULL) {
   path<-get_runtime_index_path(storagepath=storagepath)
   df<-list_runtime_objects(storagepath = storagepath)
   if(is.null(objectnames)) {
@@ -424,10 +424,18 @@ load_objects<-function(storagepath, envir=.GlobalEnv, objectnames=NULL) {
                   " are missing from the objectstorage. Are you sure you have put them there?"))
     }
   }
+  if(is.null(aliasnames)) {
+    aliasnames<-objectnames
+  }
   df<-tidyr::nest(dplyr::group_by(df, archive_filename))
   browser() #Check it
   for(i in seq(nrow(df))) {
     archive_filename<-pathcat::path.cat(dirname(storagepath), df$archive_filename[[i]])
+    load_objects_from_archive(archive_path=archive_filename,
+                              objectnames=objectnames,
+                              aliasnames=aliasnames,
+                              envir=envir,
+                              flag_multi_archive=!df$single_object)
   }
 }
 
