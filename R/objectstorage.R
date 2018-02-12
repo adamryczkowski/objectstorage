@@ -411,7 +411,8 @@ get_object_digest<-function(storagepath, objectnames) {
 #' @param storagepath Path to the storage
 #' @param envir The target environment. Defaults to the global environment.
 #' @param objectnames Vector with names of objects to load. Defaults to all objects
-#' @return Nothing (besides the \code{envir}). Environments get updated by reference.
+#' @return Logical vector, one for each loaded object. \code{TRUE} means that
+#'         load was successfull, \code{FALSE} otherwise.
 #' @export
 load_objects<-function(storagepath, envir=.GlobalEnv, objectnames=NULL, aliasnames=NULL) {
   path<-get_runtime_index_path(storagepath=storagepath)
@@ -428,7 +429,7 @@ load_objects<-function(storagepath, envir=.GlobalEnv, objectnames=NULL, aliasnam
     aliasnames<-objectnames
   }
   df<-tidyr::nest(dplyr::group_by(df, archive_filename))
-  browser() #Check it
+  browser() #Implement return values
   for(i in seq(nrow(df))) {
     archive_filename<-pathcat::path.cat(dirname(storagepath), df$archive_filename[[i]])
     load_objects_from_archive(archive_path=archive_filename,
@@ -439,11 +440,3 @@ load_objects<-function(storagepath, envir=.GlobalEnv, objectnames=NULL, aliasnam
   }
 }
 
-#' \describe{
-#' \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
-#' \item{\strong{digest}}{String with the digest of the object.}
-#' \item{\strong{size}}{Numeric value with the size of the stored object.}
-#' \item{\strong{archive_filename}}{Path where the object is stored absolute or relative to the storage path.}
-#' \item{\strong{single_object}}{Logical. \code{TRUE} if the archive contain only this one object. Otherwise
-#' archive contains named list of objects.}
-#' \item{\strong{compress}}{Type of compression used to store this individual object}
