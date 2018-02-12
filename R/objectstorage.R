@@ -405,3 +405,37 @@ get_object_digest<-function(storagepath, objectnames) {
     stop(paste("There is no object storage in ", storagepath))
   }
 }
+
+#' Loads specified objects into the given environment.
+#'
+#' @param storagepath Path to the storage
+#' @param envir The target environment. Defaults to the global environment.
+#' @param objectnames Vector with names of objects to load. Defaults to all objects
+#' @return Nothing (besides the \code{envir}). Environments get updated by reference.
+#' @export
+load_objects<-function(storagepath, envir=.GlobalEnv, objectnames=NULL) {
+  path<-get_runtime_index_path(storagepath=storagepath)
+  df<-list_runtime_objects(storagepath = storagepath)
+  if(is.null(objectnames)) {
+    objectnames<-df$objectname
+  } else {
+    if(length(setdiff(objectnames, df$objectname))>0) {
+      stop(paste0("Objects ", paste0(setdiff(objectnames, df$objectname), collapse = ','),
+                  " are missing from the objectstorage. Are you sure you have put them there?"))
+    }
+  }
+  df<-tidyr::nest(dplyr::group_by(df, archive_filename))
+  browser() #Check it
+  for(i in seq(nrow(df))) {
+    archive_filename<-pathcat::path.cat(dirname(storagepath), df$archive_filename[[i]])
+  }
+}
+
+#' \describe{
+#' \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
+#' \item{\strong{digest}}{String with the digest of the object.}
+#' \item{\strong{size}}{Numeric value with the size of the stored object.}
+#' \item{\strong{archive_filename}}{Path where the object is stored absolute or relative to the storage path.}
+#' \item{\strong{single_object}}{Logical. \code{TRUE} if the archive contain only this one object. Otherwise
+#' archive contains named list of objects.}
+#' \item{\strong{compress}}{Type of compression used to store this individual object}
