@@ -18,7 +18,11 @@ lists_to_df<-function(l, list_columns=character(0)) {
       nas[[cn]]<-NA
     } else {
       val<-l[[1]][[cn]]
-      val[[1]]<-NA
+      if('character' %in% class(val)) {
+        val[[1]]<-NA_character_
+      } else {
+        val[[1]]<-NA
+      }
       nas[[cn]]<-val
     }
     dt[[cn]]<-rep(val, nrow)
@@ -31,6 +35,7 @@ lists_to_df<-function(l, list_columns=character(0)) {
       }
       if(cn %in% list_columns) {
         val<-list(list(val))
+      } else {
       }
       set(dt, i, cn, val)
     }
