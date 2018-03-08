@@ -70,15 +70,17 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
     stop("target.environment is missing")
   }
 
-
-  if(flag_use_attrib) {
-    if(!is.null(attr(get(objectname, envir = target.environment), getOption('objectstorage.reserved_attr_for_hash')))) {
+  if(!is.null(attr(get(objectname, envir = target.environment), getOption('objectstorage.reserved_attr_for_hash')))) {
+    if(flag_use_attrib) {
       return(attr(get(objectname, envir = target.environment), getOption('objectstorage.reserved_attr_for_hash')))
+    } else {
+      data.table::setattr(get(objectname, envir = target.environment), getOption('objectstorage.reserved_attr_for_hash'), NULL)
     }
   }
 
+
   #Należy usunąć nasze metadane do kalkulacji digestu, bo metadane same mogą zawierać digest i nigdy nie uzyskamy spójnych wyników
-  obj<-target.environment[[objectname]]
+  obj<-get(objectname, envir = target.environment)
 
   if (data.table::is.data.table(obj))
   {
@@ -93,8 +95,8 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
     d<-digest::digest(obj)
   }
   if(flag_add_attrib) {
-    if(objectname %in% names(target.environment)) { #It may be in the parent of the environment, and in this case we will not touch it
-      data.table::setattr(target.environment[[objectname]], getOption('objectstorage.reserved_attr_for_hash'), d)
+    if(objectname %in% ls(envir = target.environment)) { #It may be in the parent of the environment, and in this case we will not touch it
+      data.table::setattr(get(objectname, envir = target.environment), getOption('objectstorage.reserved_attr_for_hash'), d)
     }
   }
   assertDigest(d)

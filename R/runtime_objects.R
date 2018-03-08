@@ -12,6 +12,13 @@
 update_runtime_objects_index<-function(storagepath, newidx) {
   path<-get_runtime_index_path(storagepath)
   if(file.exists(path)) {
+    oldidx<-readRDS(path)
+    if(identical(newidx, oldidx)) {
+      return()
+    }
+    if(nrow(oldidx)>0) {
+      browser()
+    }
     unlink(path)
   }
   objects<-newidx$objectname
@@ -34,6 +41,7 @@ get_runtime_index_path<-function(storagepath) {
     path<-storagepath
   }
   path<-pathcat::path.cat(getwd(), path)
+  assertValidPath(path)
   return(path)
 }
 
@@ -105,6 +113,11 @@ infer_save_locations<-function(storagepath, objectnames=NULL, obj.environment,
 
   if(length(objectnames)==0) {
     return(NULL)
+  }
+  ext<-getOption('objectstorage.index_extension')
+  ext2<-stringr::str_replace(ext, pattern=stringr::fixed('.'), replacement = '\\.')
+  if(stringr::str_detect(storagepath, stringr::regex(paste0(ext2, '$')))) {
+    storagepath<-stringr::str_replace(storagepath, pattern = stringr::regex(paste0(ext2, '$')), replacement = '')
   }
 
   flag_forced_save_filenames<-parse_argument(arg=flag_forced_save_filenames,
@@ -305,64 +318,5 @@ parse_argument<-function(arg, objectnames, default_value) {
     }
   }
   return(out)
-}
-
-load_objects<-function(storagepath, objectnames, target.environment, flag_double_check_digest=FALSE) {
-  idx<-list_runtime_objects(storagepath)
-  idx_f<-dplyr::filter(idx, objectnames %in% objectnames)
-  if(length(setdiff(objectnames, idx$objectnames))>0) {
-    stop("There is no ", paste0(setdiff(objectnames, idx$objectnames), collapse=", "), " objects in the storage!")
-  }
-  idx_gr<-tidyr::nest(dplyr::group_by(idx, archive_filename))
-  for(i in seq(1, nrow(idx_gr))) {
-    archivepath<-idx_gr$archive_filename[[i]]
-    data<-idx_gr$data[[i]]
-    single_object<-data$single_object[[1]]
-    if(single_object) {
-      if(nrow(data)>1) {
-        browser() #Something wrong with the records. There should be only single object
-      }
-      archivepath<-pathcat::path.cat(dirname(storagepath), archivepath)
-      assign(x = data$objectnames[[1]], value = readRDS(archivepath), envir = target.environment)
-      if(flag_double_check_digest) {
-        d1<-calculate.object.digest(data$objectnames[[1]], target.environment = target.environment,
-                                    flag_use_attrib = FALSE, flag_add_attrib = FALSE)
-        d2<-data$digest[[1]]
-        if(d1!=d2) {
-          stop(paste0("Object ", objname, " stored in ", archivepath, " has digest ", d1, ", ",
-                      "which doesn't match stored digest of ", d2))
-        }
-      }
-
-    } else {
-      if(nrow(data)==0) {
-        browser() #internal error
-      }
-      alldb<-dplyr::filter(idx, archive_filename==archivepath)
-      env<-new.env()
-      archivepath<-pathcat::path.cat(dirname(storagepath), archivepath)
-      assign(x = 'obj', value = readRDS(archivepath), envir = env)
-      data<-data[data$objectnames %in% objectnames,]
-
-      for(i in seq(1,nrow(data))) {
-        objname<-data$objectnames[[i]]
-        if(!objname %in% names(env$obj)) {
-          stop(paste0("Cannot find object ", objname, " among objects actually saved in ",
-                      archivepath, " although advertised this object should be there."))
-        }
-        if(flag_double_check_digest) {
-          d1<-calculate.object.digest(objname, target.environment = env$obj,
-                                      flag_use_attrib = FALSE, flag_add_attrib = FALSE)
-          d2<-data$digest[[i]]
-          if(d1!=d2) {
-            stop(paste0("Object ", objname, " stored in ", archivepath, " has digest ", d1, ", ",
-                        "which doesn't match stored digest of ", d2))
-          }
-        }
-        assign(x=objname, value=env$obj[[objname]], envir=target.environment)
-      }
-    }
-  }
-  return(TRUE)
 }
 

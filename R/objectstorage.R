@@ -79,6 +79,21 @@ list_runtime_objects<-function(storagepath) {
 #' listed in \code{addobjectnames}.
 #' @param archive_filename Optional character vector with custom paths to the archives. Can be a single character object,
 #'        vector with the size of \code{objects_to_add} or named vector with keys from \code{objects_to_add}.
+#' @param flag_forced_save_filenames Controls, whether force a particular object in its own dedicated archive.
+#' Value can be either single boolean, or vector of booleans with the same size as
+#' \code{addobjectnames}, or named boolean vector with keys values of \code{addobjectnames}. In the latter case,
+#' non-mentioned objects will be assumed value \code{FALSE} (i.e. not forced filename).
+#' @param compress Controls the compression of the archive. It is important to realize, that if the archive
+#' had already contained some objects prior to modifying it and the modification would not remove the objects,
+#' those objects will be re-compressed with the \code{compress} compression, since the archive will effectively
+#' be re-added. Supports 3 calues: \code{none}, \code{gzip} and \code{xz}.
+#' Value can be either single character, or vector of characters with the same size as
+#' \code{addobjectnames}, or named character vector with keys values of \code{addobjectnames}. In the latter case,
+#' non-mentioned objects will be assumed value \code{gzip}.
+#' @param large_archive_prefix If set, all new archives for large objects will be saved with this prefix, otherwise in the
+#' \code{dirname(storagepath)}.
+#' \code{storagepath}. It is up to the user to make sure this directory is empty and no file name conflicts will
+#' arise.
 #' @return Returns `data.frame` with the following columns:
 #' \describe{
 #' \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
@@ -93,26 +108,94 @@ list_runtime_objects<-function(storagepath) {
 
 # Na wejściu otrzymujemy listę archives list, która dla każdego archiwum zawiera listę z elementami
 # objectnames - lista objektów, archive_filename - ścieżka do pliku archiwum, compress, flag_use_tmp_storage
-modify_runtime_objects<-function(storagepath, obj.environment, objects_to_add=NULL, objects_to_remove=character(0),
-                                 flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
-                                 forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
-                                 locktimeout=NULL,
-                                 wait_for='save',parallel_cpus=NULL)
+modify_objects<-function(storagepath, obj.environment, objects_to_add=NULL, objects_to_remove=character(0),
+                         flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
+                         forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
+                         locktimeout=NULL,
+                         wait_for='save',parallel_cpus=NULL)
 {
+  if(is.null(obj.environment)) {
+    obj.environment<-new.env(parent=emptyenv())
+  }
   archives_list<-infer_save_locations(storagepath = storagepath, objectnames = objects_to_add,
                                       obj.environment = obj.environment,
                                       flag_forced_save_filenames = flag_forced_save_filenames,
                                       flag_use_tmp_storage = flag_use_tmp_storage,
                                       forced_archive_paths = forced_archive_paths,
                                       compress = compress, large_archive_prefix = large_archive_prefix)
-
-  add_runtime_objects_internal(storagepath = storagepath, obj.environment = obj.environment,
-                               archives_list = archives_list, parallel_cpus = parallel_cpus,
-                               removeobjectnames = objects_to_remove,
-                               locktimeout = locktimeout, wait_for = wait_for)
+  if(!is.null(archives_list)) {
+#    browser()
+    add_runtime_objects_internal(storagepath = storagepath, obj.environment = obj.environment,
+                                 archives_list = archives_list, parallel_cpus = parallel_cpus,
+                                 removeobjectnames = objects_to_remove,
+                                 locktimeout = locktimeout, wait_for = wait_for)
+  }
   return(storagepath)
 }
 
+
+#' Replaces objects in the storage.
+#'
+#' @param storagepath Path with the storage.
+#' @param obj.environment Environment or named list with the objects
+#' @param objectnames Optional character vector with the names of the objects to add. Defaults to all objects in the
+#' \code{obj.environment}.
+#' @param archive_filename Optional character vector with custom paths to the archives. Can be a single character object,
+#'        vector with the size of \code{objectnames} or named vector with keys from \code{objectnames}.
+#' @param flag_forced_save_filenames Optional boolean vector. Controls, whether force a particular object in its own dedicated archive.
+#' Value can be either single boolean, or vector of booleans with the same size as
+#' \code{objectnames}, or named boolean vector with keys values of \code{objectnames}. In the latter case,
+#' non-mentioned objects will be assumed value \code{FALSE} (i.e. not forced filename).
+#' @param compress Controls the compression of the archive. It is important to realize, that if the archive
+#' had already contained some objects prior to modifying it and the modification would not remove the objects,
+#' those objects will be re-compressed with the \code{compress} compression, since the archive will effectively
+#' be re-added. Supports 3 calues: \code{none}, \code{gzip} and \code{xz}.
+#' Value can be either single character, or vector of characters with the same size as
+#' \code{objectnames}, or named character vector with keys values of \code{objectnames}. In the latter case,
+#' non-mentioned objects will be assumed value \code{gzip}.
+#' @param large_archive_prefix If set, all new archives for large objects will be saved with this prefix, otherwise in the
+#' \code{dirname(storagepath)}.
+#' \code{storagepath}. It is up to the user to make sure this directory is empty and no file name conflicts will
+#' arise.
+#' @return Returns `data.frame` with the following columns:
+#' \describe{
+#' \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
+#' \item{\strong{digest}}{String with the digest of the object.}
+#' \item{\strong{size}}{Numeric value with the size of the stored object.}
+#' \item{\strong{archive_filename}}{Path where the object is stored absolute or relative to the storage path.}
+#' \item{\strong{single_object}}{Logical. \code{TRUE} if the archive contain only this one object. Otherwise
+#' archive contains named list of objects.}
+#' \item{\strong{compress}}{Type of compression used to store this individual object}
+#' }
+#' @export
+save_objects<-function(storagepath, obj.environment, objectnames=NULL,
+                         flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
+                         forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
+                         locktimeout=NULL,
+                         wait_for='save',parallel_cpus=NULL)
+{
+  #browser()
+  if(is.null(objectnames)) {
+    objectnames<-names(obj.environment)
+  }
+  all_objects<-list_runtime_objects(storagepath)
+  objects_to_add <- intersect(objectnames, names(obj.environment))
+  objects_to_remove <- setdiff(all_objects$objectnames, objects_to_add)
+
+  archives_list<-infer_save_locations(storagepath = storagepath, objectnames = objects_to_add,
+                                      obj.environment = obj.environment,
+                                      flag_forced_save_filenames = flag_forced_save_filenames,
+                                      flag_use_tmp_storage = flag_use_tmp_storage,
+                                      forced_archive_paths = forced_archive_paths,
+                                      compress = compress, large_archive_prefix = large_archive_prefix)
+  if(!is.null(archives_list) || length(objects_to_remove)>0) {
+    add_runtime_objects_internal(storagepath = storagepath, obj.environment = obj.environment,
+                                 archives_list = archives_list, parallel_cpus = parallel_cpus,
+                                 removeobjectnames = objects_to_remove,
+                                 locktimeout = locktimeout, wait_for = wait_for)
+  }
+  return(storagepath)
+}
 
 #' Removes everything from disk
 #'
@@ -121,7 +204,7 @@ modify_runtime_objects<-function(storagepath, obj.environment, objects_to_add=NU
 
 remove_all<-function(storagepath) {
   all_objects<-list_runtime_objects(storagepath = storagepath)$objectname
-  modify_runtime_objects(storagepath, objects_to_remove = all_objects)
+  modify_objects(storagepath, objects_to_remove = all_objects, obj.environment = NULL)
   path<-get_runtime_index_path(storagepath)
   unlink(path)
 }
@@ -406,16 +489,21 @@ get_object_digest<-function(storagepath, objectnames) {
   }
 }
 
-#' Loads specified objects into the given environment.
+
+#'Main function to load the objects into the given environment
 #'
-#' @param storagepath Path to the storage
-#' @param envir The target environment. Defaults to the global environment.
-#' @param objectnames Vector with names of objects to load. Defaults to all objects
+#' @param storagepath Path to the storage metadata
+#' @param objectnames Objectnames to extract
+#' @param aliasnames Optional vector of the same length as \code{objectnames} with new names for the extracted objects.
+#' @param target_environment Target environment where to put the objects
+#' @param flag_double_check_digest Calculate the digest of the extracted objects and check it against the metadata
 #' @return Logical vector, one for each loaded object. \code{TRUE} means that
 #'         load was successfull, \code{FALSE} otherwise.
 #' @export
-load_objects<-function(storagepath, envir=.GlobalEnv, objectnames=NULL, aliasnames=NULL) {
-  path<-get_runtime_index_path(storagepath=storagepath)
+load_objects<-function(storagepath, objectnames=NULL, target_environment, flag_double_check_digest=FALSE, aliasnames=NULL) {
+  tmppath<-get_runtime_index_path(storagepath)
+  assertValidPath(tmppath)
+
   df<-list_runtime_objects(storagepath = storagepath)
   if(is.null(objectnames)) {
     objectnames<-df$objectname
@@ -425,18 +513,77 @@ load_objects<-function(storagepath, envir=.GlobalEnv, objectnames=NULL, aliasnam
                   " are missing from the objectstorage. Are you sure you have put them there?"))
     }
   }
-  if(is.null(aliasnames)) {
+
+
+  checkmate::assertCharacter(objectnames)
+  checkmate::assertFALSE(any(duplicated(objectnames)))
+  checkmate::assertEnvironment(target_environment)
+  checkmate::assertFlag(flag_double_check_digest)
+  if(!is.null(aliasnames)) {
+    checkmate::assertCharacter(aliasnames)
+    checkmate::assertFALSE(any(duplicated(aliasnames)))
+    checkmate::assertTRUE(length(aliasnames)==length(objectnames))
+  } else {
     aliasnames<-objectnames
   }
-  df<-tidyr::nest(dplyr::group_by(df, archive_filename))
-  browser() #Implement return values
-  for(i in seq(nrow(df))) {
-    archive_filename<-pathcat::path.cat(dirname(storagepath), df$archive_filename[[i]])
-    load_objects_from_archive(archive_path=archive_filename,
-                              objectnames=objectnames,
-                              aliasnames=aliasnames,
-                              envir=envir,
-                              flag_multi_archive=!df$single_object)
-  }
-}
 
+  idx<-list_runtime_objects(storagepath)
+  idx_f<-dplyr::filter(idx, objectnames %in% objectnames)
+  if(length(setdiff(objectnames, idx$objectnames))>0) {
+    stop("There is no ", paste0(setdiff(objectnames, idx$objectnames), collapse=", "), " objects in the storage!")
+  }
+  idx_gr<-tidyr::nest(dplyr::group_by(idx, archive_filename))
+  for(i in seq(1, nrow(idx_gr))) {
+    archivepath<-idx_gr$archive_filename[[i]]
+    data<-idx_gr$data[[i]]
+    single_object<-data$single_object[[1]]
+    if(single_object) {
+      if(nrow(data)>1) {
+        browser() #Something wrong with the records. There should be only single object
+      }
+      archivepath<-pathcat::path.cat(dirname(storagepath), archivepath)
+      newname<-aliasnames[which(objectnames==data$objectnames[[1]])]
+      assign(x = newname, value = readRDS(archivepath), envir = target_environment)
+      if(flag_double_check_digest) {
+        d1<-calculate.object.digest(newname, target.environment = target_environment,
+                                    flag_use_attrib = FALSE, flag_add_attrib = FALSE)
+        d2<-data$digest[[1]]
+        if(d1!=d2) {
+          browser()
+          stop(paste0("Object ", newname, " stored in ", archivepath, " has digest ", d1, ", ",
+                      "which doesn't match stored digest of ", d2))
+        }
+      }
+
+    } else {
+      if(nrow(data)==0) {
+        browser() #internal error
+      }
+      alldb<-dplyr::filter(idx, archive_filename==archivepath)
+      env<-new.env()
+      archivepath<-pathcat::path.cat(dirname(storagepath), archivepath)
+      assign(x = 'obj', value = readRDS(archivepath), envir = env)
+      data<-data[data$objectnames %in% objectnames,]
+
+      for(i in seq(1,nrow(data))) {
+        objname<-data$objectnames[[i]]
+        newname<-aliasnames[which(objectnames==data$objectnames[[i]])]
+        if(!objname %in% names(env$obj)) {
+          stop(paste0("Cannot find object ", objname, " among objects actually saved in ",
+                      archivepath, " although advertised this object should be there."))
+        }
+        assign(x=newname, value=env$obj[[objname]], envir=target_environment)
+        if(flag_double_check_digest) {
+          d1<-calculate.object.digest(newname, target.environment = env$obj,
+                                      flag_use_attrib = FALSE, flag_add_attrib = FALSE)
+          d2<-data$digest[[i]]
+          if(d1!=d2) {
+            stop(paste0("Object ", objname, " stored in ", archivepath, " has digest ", d1, ", ",
+                        "which doesn't match stored digest of ", d2))
+          }
+        }
+      }
+    }
+  }
+  return(rep(TRUE, length(objectnames)))
+}
