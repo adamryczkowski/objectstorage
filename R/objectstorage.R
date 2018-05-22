@@ -278,7 +278,7 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
                                        locktimeout=NULL,
                                        wait_for='save',parallel_cpus=NULL)
 {
-  archives_db<-lists_to_df(archives_list, list_columns='objectnames')
+  archives_db<-lists2df::lists_to_df(archives_list, list_columns='objectnames')
   archives_db_flat<-data.table(tidyr::unnest(archives_db),
                                digest=NA_character_, size=NA_real_)
   archives_db_flat<-purrrlyr::by_row(archives_db_flat, ~length(.$objectnames[[1]])>1, .collate = 'cols', .to='single_object')
