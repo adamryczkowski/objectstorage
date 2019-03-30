@@ -1,6 +1,6 @@
-context("New")
 library(objectstorage)
 library(testthat)
+context("New")
 
 #source('tests/testthat/testfunctions.R')
 

@@ -384,9 +384,8 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
       dplyr::left_join(change_objects_db_nested, archives_db,
                        by=c(archive_filename='archive_filename')),
       -objectnames)
-    #browser()
 
-    if(flag_do_sequentially) {
+    if(flag_do_sequentially || parallel_cpus==1) {
       ans<-mapply(modify_runtime_archive,
                   addobjectnames=change_objects_db_nested$objectnames_new,
                   removeobjectnames=change_objects_db_nested$objectnames_remove,
@@ -398,6 +397,7 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
                                 parallel_cpus=parallel_cpus),
                   SIMPLIFY=FALSE)
     } else {
+#      browser()
       ans<-parallel::mcmapply(modify_runtime_archive,
                               addobjectnames=change_objects_db_nested$objectnames_new,
                               removeobjectnames=change_objects_db_nested$objectnames_remove,
@@ -419,6 +419,7 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
 
       pb <- txtProgressBar(min = 0, max = length(jobs), style = 3)
       cat("Waiting for saves to finish..")
+#      browser()
       parallel::mccollect(jobs, wait=TRUE, intermediate = function(res) {setTxtProgressBar(pb, length(res))})
       close(pb)
     }
@@ -504,12 +505,12 @@ load_objects<-function(storagepath, objectnames=NULL, target_environment, flag_d
   tmppath<-get_runtime_index_path(storagepath)
   assertValidPath(tmppath)
 
-  df<-list_runtime_objects(storagepath = storagepath)
+  idx<-list_runtime_objects(storagepath = storagepath)
   if(is.null(objectnames)) {
-    objectnames<-df$objectname
+    objectnames<-idx$objectname
   } else {
-    if(length(setdiff(objectnames, df$objectname))>0) {
-      stop(paste0("Objects ", paste0(setdiff(objectnames, df$objectname), collapse = ','),
+    if(length(setdiff(objectnames, idx$objectname))>0) {
+      stop(paste0("Objects ", paste0(setdiff(objectnames, idx$objectname), collapse = ','),
                   " are missing from the objectstorage. Are you sure you have put them there?"))
     }
   }
@@ -527,7 +528,7 @@ load_objects<-function(storagepath, objectnames=NULL, target_environment, flag_d
     aliasnames<-objectnames
   }
 
-  idx<-list_runtime_objects(storagepath)
+#  idx<-list_runtime_objects(storagepath)
   idx_f<-dplyr::filter(idx, objectnames %in% objectnames)
   if(length(setdiff(objectnames, idx$objectnames))>0) {
     stop("There is no ", paste0(setdiff(objectnames, idx$objectnames), collapse=", "), " objects in the storage!")

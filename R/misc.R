@@ -22,7 +22,9 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
   if(is.null(target.environment)) {
     stop("target.environment is missing")
   }
-
+  if(!'environment' %in% class(target.environment)) {
+    target.environment<-as.environment(target.environment)
+  }
   if(!is.null(attr(get(objectname, envir = target.environment), getOption('objectstorage.reserved_attr_for_hash')))) {
     if(flag_use_attrib) {
       return(attr(get(objectname, envir = target.environment), getOption('objectstorage.reserved_attr_for_hash')))

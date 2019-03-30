@@ -17,7 +17,7 @@ update_runtime_objects_index<-function(storagepath, newidx) {
       return()
     }
     if(nrow(oldidx)>0) {
-      browser()
+#      browser()
     }
     unlink(path)
   }

@@ -1,6 +1,6 @@
+library(testthat)
 context("Saving objects")
 library(objectstorage)
-library(testthat)
 #source('tests/testthat/testfunctions.R')
 
 source('testfunctions.R')
@@ -16,7 +16,7 @@ test_that("Save simple forced object", {
 
 #  debugonce(set_runtime_archive)
 #  debugonce(add_runtime_objects_internal)
-  add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
+  objectstorage:::add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
   sp<-list_runtime_objects(storagepath = storagepath)
   testthat::expect_equivalent(as.list(sp), list(objectnames='a', digest=digest::digest(env$a),
                                                 size=as.numeric(object.size(env$a)),
@@ -38,7 +38,7 @@ test_that("Save simple forced object", {
 
   #  debugonce(set_runtime_archive)
   #  debugonce(add_runtime_objects_internal)
-  add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
+  objectstorage:::add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
   sp<-list_runtime_objects(storagepath = storagepath)
   testthat::expect_equivalent(as.list(sp), list(objectnames='a', digest=digest::digest(env$a),
                                                 size=as.numeric(object.size(env$a)),
@@ -62,7 +62,7 @@ test_that("Save two objects, default inference", {
 #  debugonce(add_runtime_objects_internal)
 #  debugonce(infer_save_locations)
   ans<-infer_save_locations(storagepath, obj.environment=env)
-  add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
+  objectstorage:::add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
   sp<-list_runtime_objects(storagepath = storagepath)
   #  debugonce(add_runtime_objects_internal)
 
@@ -72,14 +72,15 @@ test_that("Save two objects, default inference", {
                                                 compress=c('gzip', 'gzip'), flag_use_tmp_storage=c(FALSE,FALSE)))
 
   env2<-new.env()
-  testthat::expect_true(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE))
+#  debugonce(load_objects)
+  testthat::expect_true(all(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE)))
   testthat::expect_equal(env2$a, env$a)
   testthat::expect_equal(env2$b, env$b)
 
   env3<-new.env()
   #debugonce(load_objects)
-  testthat::expect_true(load_objects(storagepath = storagepath, objectnames = 'a',target.environment =  env3, flag_double_check_digest = TRUE))
-  load_objects(storagepath = storagepath, objectnames = 'a',target.environment =  env3, flag_double_check_digest = TRUE)
+  testthat::expect_true(load_objects(storagepath = storagepath, objectnames = 'a',target_environment =  env3, flag_double_check_digest = TRUE))
+  load_objects(storagepath = storagepath, objectnames = 'a',target_environment =  env3, flag_double_check_digest = TRUE)
   testthat::expect_equivalent(as.list(env3), list(a=100))
 }
 )
@@ -94,11 +95,11 @@ test_that("Two objects, one large, default inference", {
   ans<-infer_save_locations(storagepath, obj.environment=env)
   testthat::expect_false(is.null(ans))
   #debugonce(add_runtime_objects_internal)
-  add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
+  objectstorage:::add_runtime_objects_internal(storagepath = storagepath, obj.environment = env, archives_list = ans, parallel_cpus = 0)
 
   env2<-new.env()
   #debugonce(load_objects)
-  testthat::expect_true(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE))
+  testthat::expect_true(all(load_objects(storagepath = storagepath, objectnames = c('a', 'b'), env2, flag_double_check_digest = TRUE)))
   testthat::expect_equivalent(env, env2)
 }
 )
@@ -123,9 +124,9 @@ test_that("Multiple objects that share common, to test naming", {
   ans<-infer_save_locations(storagepath, obj.environment=env)
 
 
-  modify_runtime_objects(storagepath = storagepath, obj.environment = env, parallel_cpus = 0)
+  modify_objects(storagepath = storagepath, obj.environment = env, parallel_cpus = 0)
   env2<-new.env()
-  load_objects(storagepath = storagepath, target.environment = env2, objectnames = ls(env), flag_double_check_digest = TRUE)
+  load_objects(storagepath = storagepath, target_environment = env2, objectnames = ls(env), flag_double_check_digest = TRUE)
   expect_equivalent(env2 ,env)
 }
 )
