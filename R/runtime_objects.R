@@ -133,20 +133,21 @@ infer_save_locations<-function(storagepath, objectnames=NULL, obj.environment,
 
   flag_forced_save_filenames[names(forced_archive_paths)[!is.na(forced_archive_paths)] ]<-TRUE
   default_objects<-objectnames
-  out<-list()
+  out<-list() # list of all object names
   if(sum(flag_forced_save_filenames)>0) {
     all_containers<-unique(forced_archive_paths)
     for(i in seq(1, length(all_containers))){
       cntname<-pathcat::path.cat(dirname(storagepath), all_containers[[i]])
       cntname<-pathcat::make.path.relative(dirname(storagepath), cntname)
       poss<-which(forced_archive_paths==cntname)
-      cnt_objnames<-objectnames[poss]
+      cnt_objnames<-objectnames[poss] #object names that are stored in the forced archive name
       out[[cntname]]<-list(objectnames=cnt_objnames, archive_filename=cntname,
                            compress=compress[poss],
                            flag_use_tmp_storage=flag_use_tmp_storage[poss])
       default_objects<-setdiff(default_objects, cnt_objnames)
     }
   }
+  #Now we can be sure, that there are no objects with forced archive paths in default_objects; those items has been handled already.
 
   if(length(default_objects)>0) {
     flag_forced_save_filenames<-flag_forced_save_filenames[default_objects]
@@ -155,10 +156,13 @@ infer_save_locations<-function(storagepath, objectnames=NULL, obj.environment,
     objectnames<-default_objects
     objectsizes<-purrr::map_dbl(objectnames, ~object.size(obj.environment[[.]]))
     flag_forced_save_filenames[objectsizes > getOption('objectstorage.tune_threshold_objsize_for_dedicated_archive')]<-TRUE
+
+    #First we take care of all the small objects that are going to be saved in the default location
     number_of_files<-sum(flag_forced_save_filenames)
     generic_file_name<-pathcat::path.cat(dirname(storagepath), paste0(basename(storagepath), getOption('objectstorage.default_archive.extension')))
 
     generic_file_name<-pathcat::make.path.relative(dirname(storagepath), generic_file_name)
+
 
     item=list(objectnames=c(objectnames[!flag_forced_save_filenames], out[[generic_file_name]]$objectnames),
               archive_filename=generic_file_name,

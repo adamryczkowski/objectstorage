@@ -22,4 +22,5 @@ Depends:
     data.table
 Remotes:
 	 adamryczkowski/pathcat
-RoxygenNote: 6.0.1
+	 adamryczkowski/lists2df
+RoxygenNote: 6.1.1

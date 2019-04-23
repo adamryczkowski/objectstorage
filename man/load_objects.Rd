@@ -4,8 +4,9 @@
 \alias{load_objects}
 \title{Main function to load the objects into the given environment}
 \usage{
-load_objects(storagepath, objectnames = NULL, target_environment,
-  flag_double_check_digest = FALSE, aliasnames = NULL)
+load_objects(storagepath, objectnames = NULL,
+  target_environment = NULL, flag_double_check_digest = FALSE,
+  aliasnames = NULL)
 }
 \arguments{
 \item{storagepath}{Path to the storage metadata}

@@ -4,16 +4,17 @@
 \alias{modify_objects}
 \title{Adds or removes objects in the storage.}
 \usage{
-modify_objects(storagepath, obj.environment, objects_to_add = NULL,
-  objects_to_remove = character(0), flag_forced_save_filenames = FALSE,
-  flag_use_tmp_storage = FALSE, forced_archive_paths = NA,
-  compress = "gzip", large_archive_prefix = NULL, locktimeout = NULL,
-  wait_for = "save", parallel_cpus = NULL)
+modify_objects(storagepath, obj.environment = NULL,
+  objects_to_add = NULL, objects_to_remove = character(0),
+  flag_forced_save_filenames = FALSE, flag_use_tmp_storage = FALSE,
+  forced_archive_paths = NA, compress = "gzip",
+  large_archive_prefix = NULL, locktimeout = NULL, wait_for = "save",
+  parallel_cpus = NULL)
 }
 \arguments{
 \item{storagepath}{Path with the storage.}
 
-\item{obj.environment}{Environment or named list with the objects}
+\item{obj.environment}{Environment or named list with the objects. Defaults to the current environment.}
 
 \item{flag_forced_save_filenames}{Controls, whether force a particular object in its own dedicated archive.
 Value can be either single boolean, or vector of booleans with the same size as

@@ -66,7 +66,7 @@ clear_digest_cache<-function(objectname, envir) {
     }
     envir<-parent.env(envir)
   }
-  return(FALSE)
+  return(objectname %in% names(envir))
 }
 
 assertDigest<-function(digest)

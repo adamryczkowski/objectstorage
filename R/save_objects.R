@@ -249,6 +249,9 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
   #   sizes[[i]]<-object.size(obj.environment)
   # }
 
+  if('list' %in% class(obj.environment)) {
+    obj.environment<-as.environment(obj.environment)
+  }
   sizes<-as.numeric(purrr::map_chr(objectnames, ~object.size(get(., envir = obj.environment))))
 
   if(length(objectnames)==0) {

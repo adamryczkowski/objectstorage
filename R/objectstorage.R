@@ -72,7 +72,7 @@ list_runtime_objects<-function(storagepath) {
 #' Adds or removes objects in the storage.
 #'
 #' @param storagepath Path with the storage.
-#' @param obj.environment Environment or named list with the objects
+#' @param obj.environment Environment or named list with the objects. Defaults to the current environment.
 #' @param addobjectnames Character vector with the names of the objects to add. Defaults to all objects in the
 #' \code{obj.environment}.
 #' @param removeobjectnames Character vector with the names of the objects to remove. Cannot contain objects
@@ -108,16 +108,16 @@ list_runtime_objects<-function(storagepath) {
 
 # Na wejściu otrzymujemy listę archives list, która dla każdego archiwum zawiera listę z elementami
 # objectnames - lista objektów, archive_filename - ścieżka do pliku archiwum, compress, flag_use_tmp_storage
-modify_objects<-function(storagepath, obj.environment, objects_to_add=NULL, objects_to_remove=character(0),
+modify_objects<-function(storagepath, obj.environment=NULL, objects_to_add=NULL, objects_to_remove=character(0),
                          flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
                          forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
                          locktimeout=NULL,
                          wait_for='save',parallel_cpus=NULL)
 {
   if(is.null(obj.environment)) {
-    obj.environment<-new.env(parent=emptyenv())
+    obj.environment<-new.env(parent=parent.frame())
   }
-  archives_list<-infer_save_locations(storagepath = storagepath, objectnames = objects_to_add,
+  archives_list<-infer_save_locations(storagepath = storagepath, objectnames = c(objects_to_add, objects_to_remove),
                                       obj.environment = obj.environment,
                                       flag_forced_save_filenames = flag_forced_save_filenames,
                                       flag_use_tmp_storage = flag_use_tmp_storage,
@@ -137,7 +137,7 @@ modify_objects<-function(storagepath, obj.environment, objects_to_add=NULL, obje
 #' Replaces objects in the storage.
 #'
 #' @param storagepath Path with the storage.
-#' @param obj.environment Environment or named list with the objects
+#' @param obj.environment Environment or named list that contains the objects
 #' @param objectnames Optional character vector with the names of the objects to add. Defaults to all objects in the
 #' \code{obj.environment}.
 #' @param archive_filename Optional character vector with custom paths to the archives. Can be a single character object,
@@ -168,40 +168,86 @@ modify_objects<-function(storagepath, obj.environment, objects_to_add=NULL, obje
 #' \item{\strong{compress}}{Type of compression used to store this individual object}
 #' }
 #' @export
-save_objects<-function(storagepath, obj.environment, objectnames=NULL,
+save_objects_non_nse<-function(storagepath, obj.environment=rlang::caller_env(), objectnames=NULL,
                          flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
                          forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
                          locktimeout=NULL,
                          wait_for='save',parallel_cpus=NULL)
 {
-  #browser()
   if(is.null(objectnames)) {
     objectnames<-names(obj.environment)
   }
   all_objects<-list_runtime_objects(storagepath)
   objects_to_add <- intersect(objectnames, names(obj.environment))
-  objects_to_remove <- setdiff(all_objects$objectnames, objects_to_add)
-
+  #objects_to_remove <- setdiff(all_objects$objectnames, objects_to_add)
+  if(!'environment' %in% class(obj.environment)) {
+    obj.environment<-as.environment(obj.environment)
+  }
   archives_list<-infer_save_locations(storagepath = storagepath, objectnames = objects_to_add,
                                       obj.environment = obj.environment,
                                       flag_forced_save_filenames = flag_forced_save_filenames,
                                       flag_use_tmp_storage = flag_use_tmp_storage,
                                       forced_archive_paths = forced_archive_paths,
                                       compress = compress, large_archive_prefix = large_archive_prefix)
-  if(!is.null(archives_list) || length(objects_to_remove)>0) {
+  if(!is.null(archives_list)) {
     add_runtime_objects_internal(storagepath = storagepath, obj.environment = obj.environment,
                                  archives_list = archives_list, parallel_cpus = parallel_cpus,
-                                 removeobjectnames = objects_to_remove,
                                  locktimeout = locktimeout, wait_for = wait_for)
   }
-  return(storagepath)
+  ret_obj_list<-dplyr::filter(list_runtime_objects(storagepath), objectnames%in%objectnames)
+  return(ret_obj_list)
 }
+
+
+#' @export
+save_objects<-function(...,
+                       .forced_save_filenames=FALSE, .use_tmp_storage=FALSE,
+                       .forced_archive_paths=NA, .compress='gzip', .large_archive_prefix=NULL,
+                       .locktimeout=NULL,
+                       .wait_for='save',.parallel_cpus=NULL)
+{
+#  proba<-function(..., .flag1=FALSE, .opt1='bla') {
+  obj_expr<-rlang::enquos(..., .homonyms = 'error')
+  storagepath<-rlang::eval_tidy(obj_expr[[1]])
+  obj_expr<-obj_expr[-1]
+  no_names<-which(names(obj_expr)=="")
+  #browser()
+  if(length(no_names)>0) {
+    expr_str<-list()
+    for(expr in obj_expr[no_names]) {
+      expr<-rlang::get_expr(expr)
+      expr_str[length(expr_str)+1]<-deparse(expr)
+    }
+    stop(paste0("Expression", ifelse(length(no_names)>1, "s",""), " ", paste0("\"", expr_str, "\"", collapse=", "),
+                ifelse(length(no_names)>1, " are", " is"), " not named. ",
+                "All objects put into the objectstorage must be named. ",
+                "To specify a name manually use named list as an input. ",
+                "Use syntax save_objects(obj_name=<value>) or save_objects(obj_name:=<value>)."))
+  }
+  dups<-duplicated(names(obj_expr))
+  if(any(dups)) {
+    stop(paste0("Symbol", ifelse(sum(dups)>1,'s',''), " ", paste0('"', names(obj_expr)[dups], '"', collapse=', '), ifelse(sum(dups)>1,' are',' is'),
+                " duplicated. Each object is uniqually determined by its name and it makes no sense in storing mutliple objects with the same name."))
+  }
+  obj_env<-as.environment(purrr::map(obj_expr, rlang::eval_tidy))
+
+  save_objects_non_nse(storagepath=storagepath,
+                      obj.environment=obj_env,
+                      objectnames=NULL,
+                      flag_forced_save_filenames=.forced_save_filenames,
+                      flag_use_tmp_storage=.use_tmp_storage,
+                      forced_archive_paths=.forced_archive_paths, compress=.compress,
+                      large_archive_prefix=.large_archive_prefix,
+                      locktimeout=.locktimeout,
+                      wait_for=.wait_for,parallel_cpus=.parallel_cpus)
+}
+
+
 
 #' Removes everything from disk
 #'
 #' @param storagepath Path to the storage
 #' @export
-
 remove_all<-function(storagepath) {
   all_objects<-list_runtime_objects(storagepath = storagepath)$objectname
   modify_objects(storagepath, objects_to_remove = all_objects, obj.environment = NULL)
@@ -385,7 +431,7 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
                        by=c(archive_filename='archive_filename')),
       -objectnames)
 
-    if(flag_do_sequentially || parallel_cpus==1) {
+    if(flag_do_sequentially || is.null(parallel_cpus) || parallel_cpus==1) {
       ans<-mapply(modify_runtime_archive,
                   addobjectnames=change_objects_db_nested$objectnames_new,
                   removeobjectnames=change_objects_db_nested$objectnames_remove,
@@ -501,9 +547,12 @@ get_object_digest<-function(storagepath, objectnames) {
 #' @return Logical vector, one for each loaded object. \code{TRUE} means that
 #'         load was successfull, \code{FALSE} otherwise.
 #' @export
-load_objects<-function(storagepath, objectnames=NULL, target_environment, flag_double_check_digest=FALSE, aliasnames=NULL) {
+load_objects<-function(storagepath, objectnames=NULL, target_environment=rlang::caller_env(), flag_double_check_digest=FALSE, aliasnames=NULL) {
   tmppath<-get_runtime_index_path(storagepath)
   assertValidPath(tmppath)
+  if(is.null(target_environment)) {
+    target_environment<-new.env(parent=parent.frame())
+  }
 
   idx<-list_runtime_objects(storagepath = storagepath)
   if(is.null(objectnames)) {
@@ -587,4 +636,18 @@ load_objects<-function(storagepath, objectnames=NULL, target_environment, flag_d
     }
   }
   return(rep(TRUE, length(objectnames)))
+}
+
+#'Shortcut function that returns a single object read from the storage
+#'
+#' @param storagepath Path to the storage metadata
+#' @param objectnames Objectnames to extract
+#' @param flag_double_check_digest Calculate the digest of the extracted objects and check it against the metadata
+#' @return the requested object.
+#' @export
+get_object<-function(storagepath, objectname=NULL, flag_double_check_digest=FALSE) {
+  checkmate::assert_character(objectname, len = 1)
+  env=new.env()
+  load_objects(storagepath, objectnames=objectname, target_environment=env, flag_double_check_digest=flag_double_check_digest)
+  return(env[[objectname]])
 }
