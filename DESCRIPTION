@@ -21,6 +21,6 @@ Imports:
 Depends:
     data.table
 Remotes:
-	 adamryczkowski/pathcat
+	 adamryczkowski/pathcat,
 	 adamryczkowski/lists2df
 RoxygenNote: 6.1.1
