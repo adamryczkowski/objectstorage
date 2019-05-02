@@ -29,3 +29,5 @@ proba<-function(..., .flag1=FALSE, .opt1='bla') {
 a=10
 
 x<-proba(".path", .flag1=TRUE, b=1:20, c:=1, d=a, .opt1=10, a=1, bc=1:10)
+
+firejail --rlimit-as=370000000 R

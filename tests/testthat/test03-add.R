@@ -6,7 +6,7 @@ library(objectstorage)
 source('testfunctions.R')
 
 test_that("Save simple forced object", {
-  library(data.table)
+#  library(data.table)
   #  source('tests/testthat/testfunctions.R')
   storagepath<-pathcat::path.cat(tmpdir, 'add_1_forced')
   env<-new.env()
@@ -22,7 +22,6 @@ test_that("Save simple forced object", {
                                                 size=as.numeric(object.size(env$a)),
                                                 archive_filename='a.rds', single_object=TRUE,
                                                 compress='gzip', flag_use_tmp_storage=FALSE))
-
   env2<-new.env()
   expect_true(load_objects(storagepath = storagepath, objectnames = 'a', env2, flag_double_check_digest = TRUE))
 }

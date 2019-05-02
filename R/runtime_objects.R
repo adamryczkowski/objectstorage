@@ -21,7 +21,7 @@ update_runtime_objects_index<-function(storagepath, newidx) {
     }
     unlink(path)
   }
-  objects<-newidx$objectname
+  objects<-newidx$objectnames
   if(sum(duplicated(objects))==0) {
     saveRDS(newidx, path)
   } else {
@@ -163,12 +163,13 @@ infer_save_locations<-function(storagepath, objectnames=NULL, obj.environment,
 
     generic_file_name<-pathcat::make.path.relative(dirname(storagepath), generic_file_name)
 
-
-    item=list(objectnames=c(objectnames[!flag_forced_save_filenames], out[[generic_file_name]]$objectnames),
-              archive_filename=generic_file_name,
-              compress=as.character(c(compress[!flag_forced_save_filenames], out[[generic_file_name]]$compress)),
-              flag_use_tmp_storage=as.logical(c(flag_use_tmp_storage[!flag_forced_save_filenames], out[[generic_file_name]]$flag_use_tmp_storage)))
-    out[[generic_file_name]]<-item
+    if(sum(!flag_forced_save_filenames)>0) {
+      item=list(objectnames=c(objectnames[!flag_forced_save_filenames], out[[generic_file_name]]$objectnames),
+                archive_filename=generic_file_name,
+                compress=as.character(c(compress[!flag_forced_save_filenames], out[[generic_file_name]]$compress)),
+                flag_use_tmp_storage=as.logical(c(flag_use_tmp_storage[!flag_forced_save_filenames], out[[generic_file_name]]$flag_use_tmp_storage)))
+      out[[generic_file_name]]<-item
+    }
 
     if(sum(flag_forced_save_filenames)>0) {
       separate_objects<-objectnames[flag_forced_save_filenames]

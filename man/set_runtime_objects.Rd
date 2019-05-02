@@ -46,7 +46,7 @@ Returns `data.frame` with the following columns:
 \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
 \item{\strong{digest}}{String with the digest of the object.}
 \item{\strong{size}}{Numeric value with the size of the stored object.}
-\item{\strong{archive_filename}}{Path where the object is stored absolute or relative to the storage path.}
+\item{\strong{forced_archive_paths}}{Path where the object is stored absolute or relative to the storage path.}
 \item{\strong{single_object}}{Logical. \code{TRUE} if the archive contain only this one object. Otherwise
 archive contains named list of objects.}
 \item{\strong{compress}}{Type of compression used to store this individual object}

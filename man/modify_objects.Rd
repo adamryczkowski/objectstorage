@@ -21,6 +21,9 @@ Value can be either single boolean, or vector of booleans with the same size as
 \code{addobjectnames}, or named boolean vector with keys values of \code{addobjectnames}. In the latter case,
 non-mentioned objects will be assumed value \code{FALSE} (i.e. not forced filename).}
 
+\item{forced_archive_paths}{Optional character vector with custom paths to the archives. Can be a single character object,
+vector with the size of \code{objects_to_add} or named vector with keys from \code{objects_to_add}.}
+
 \item{compress}{Controls the compression of the archive. It is important to realize, that if the archive
 had already contained some objects prior to modifying it and the modification would not remove the objects,
 those objects will be re-compressed with the \code{compress} compression, since the archive will effectively
@@ -39,9 +42,6 @@ arise.}
 
 \item{removeobjectnames}{Character vector with the names of the objects to remove. Cannot contain objects
 listed in \code{addobjectnames}.}
-
-\item{archive_filename}{Optional character vector with custom paths to the archives. Can be a single character object,
-vector with the size of \code{objects_to_add} or named vector with keys from \code{objects_to_add}.}
 }
 \value{
 Returns `data.frame` with the following columns:
@@ -49,7 +49,7 @@ Returns `data.frame` with the following columns:
 \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
 \item{\strong{digest}}{String with the digest of the object.}
 \item{\strong{size}}{Numeric value with the size of the stored object.}
-\item{\strong{archive_filename}}{Path where the object is stored absolute or relative to the storage path.}
+\item{\strong{forced_archive_paths}}{Path where the object is stored absolute or relative to the storage path.}
 \item{\strong{single_object}}{Logical. \code{TRUE} if the archive contain only this one object. Otherwise
 archive contains named list of objects.}
 \item{\strong{compress}}{Type of compression used to store this individual object}

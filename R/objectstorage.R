@@ -37,10 +37,10 @@ create_objectstorage<-function(storagepath) {
 }
 
 empty_objectstorage<-function() {
-  idx<-data.table(objectnames=character(0), digest=character(0),
+  idx<-tibble::tibble(objectnames=character(0), digest=character(0),
                   size=numeric(0), archive_filename=character(0),
                   single_object=logical(0), compress=character(0),
-                  flag_use_tmp_storage=logical(0))
+                  flag_use_tmp_storage=logical(0), status=character(0))
   return(idx)
 }
 
@@ -77,7 +77,7 @@ list_runtime_objects<-function(storagepath) {
 #' \code{obj.environment}.
 #' @param removeobjectnames Character vector with the names of the objects to remove. Cannot contain objects
 #' listed in \code{addobjectnames}.
-#' @param archive_filename Optional character vector with custom paths to the archives. Can be a single character object,
+#' @param forced_archive_paths Optional character vector with custom paths to the archives. Can be a single character object,
 #'        vector with the size of \code{objects_to_add} or named vector with keys from \code{objects_to_add}.
 #' @param flag_forced_save_filenames Controls, whether force a particular object in its own dedicated archive.
 #' Value can be either single boolean, or vector of booleans with the same size as
@@ -99,7 +99,7 @@ list_runtime_objects<-function(storagepath) {
 #' \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
 #' \item{\strong{digest}}{String with the digest of the object.}
 #' \item{\strong{size}}{Numeric value with the size of the stored object.}
-#' \item{\strong{archive_filename}}{Path where the object is stored absolute or relative to the storage path.}
+#' \item{\strong{forced_archive_paths}}{Path where the object is stored absolute or relative to the storage path.}
 #' \item{\strong{single_object}}{Logical. \code{TRUE} if the archive contain only this one object. Otherwise
 #' archive contains named list of objects.}
 #' \item{\strong{compress}}{Type of compression used to store this individual object}
@@ -107,7 +107,7 @@ list_runtime_objects<-function(storagepath) {
 #' @export
 
 # Na wejściu otrzymujemy listę archives list, która dla każdego archiwum zawiera listę z elementami
-# objectnames - lista objektów, archive_filename - ścieżka do pliku archiwum, compress, flag_use_tmp_storage
+# objectnames - lista objektów, forced_archive_paths - ścieżka do pliku archiwum, compress, flag_use_tmp_storage
 modify_objects<-function(storagepath, obj.environment=NULL, objects_to_add=NULL, objects_to_remove=character(0),
                          flag_forced_save_filenames=FALSE, flag_use_tmp_storage=FALSE,
                          forced_archive_paths=NA, compress='gzip', large_archive_prefix=NULL,
@@ -249,7 +249,7 @@ save_objects<-function(...,
 #' @param storagepath Path to the storage
 #' @export
 remove_all<-function(storagepath) {
-  all_objects<-list_runtime_objects(storagepath = storagepath)$objectname
+  all_objects<-list_runtime_objects(storagepath = storagepath)$objectnames
   modify_objects(storagepath, objects_to_remove = all_objects, obj.environment = NULL)
   path<-get_runtime_index_path(storagepath)
   unlink(path)
@@ -286,7 +286,7 @@ remove_all<-function(storagepath) {
 #' \item{\strong{objectname}}{Name of the stored object. This is a primary key.}
 #' \item{\strong{digest}}{String with the digest of the object.}
 #' \item{\strong{size}}{Numeric value with the size of the stored object.}
-#' \item{\strong{archive_filename}}{Path where the object is stored absolute or relative to the storage path.}
+#' \item{\strong{forced_archive_paths}}{Path where the object is stored absolute or relative to the storage path.}
 #' \item{\strong{single_object}}{Logical. \code{TRUE} if the archive contain only this one object. Otherwise
 #' archive contains named list of objects.}
 #' \item{\strong{compress}}{Type of compression used to store this individual object}
@@ -325,18 +325,20 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
                                        wait_for='save',parallel_cpus=NULL)
 {
   archives_db<-lists2df::lists_to_df(archives_list, list_columns='objectnames')
-  archives_db_flat<-data.table(tidyr::unnest(archives_db),
+  archives_db_flat<-tibble::as_tibble(tidyr::unnest(archives_db),
                                digest=NA_character_, size=NA_real_)
   archives_db_flat<-purrrlyr::by_row(archives_db_flat, ~length(.$objectnames[[1]])>1, .collate = 'cols', .to='single_object')
 
 
   objectnames<-archives_db_flat$objectnames
-
+#  browser()
   for(i in seq_along(objectnames)) {
     objname<-objectnames[[i]]
-    set(archives_db_flat, i, 'digest', calculate.object.digest(objname, obj.environment,
-                                                               flag_use_attrib = FALSE, flag_add_attrib = TRUE))
-    set(archives_db_flat, i, 'size', object.size(obj.environment[[objname]]))
+    archives_db_flat[i,'digest']<-calculate.object.digest(objname, obj.environment, flag_use_attrib = FALSE, flag_add_attrib = TRUE)
+#    set(archives_db_flat, i, 'digest', calculate.object.digest(objname, obj.environment,
+#                                                               flag_use_attrib = FALSE, flag_add_attrib = TRUE))
+    archives_db_flat[i,'size']<-object.size(obj.environment[[objname]])
+    #set(archives_db_flat, i, 'size', object.size(obj.environment[[objname]]))
   }
 
   flag_do_sequentially=FALSE
@@ -363,7 +365,7 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
 
     #We remove objects that are contained in the `removeobjectnames` argument,
     #plus objects that changed the archive
-    removeobjectnames_db<-data.table(objectnames=removeobjectnames)
+    removeobjectnames_db<-tibble::tibble(objectnames=removeobjectnames)
     movedobjects<-dplyr::select(
       dplyr::filter(changed_objects_db, archive_filename_new!=archive_filename_old),
       objectnames, archive_filename=archive_filename_old)
@@ -382,22 +384,6 @@ add_runtime_objects_internal<-function(storagepath, obj.environment, archives_li
     different_objects_db<-dplyr::select(
       dplyr::filter(changed_objects_db, digest_old!=digest_new | archive_filename_new!=archive_filename_old),
       objectnames, archive_filename=archive_filename_new)
-    # if(nrow(different_objects_db)>0) {
-    #   fn_get_digest<-function(objectname) {
-    #     calculate.object.digest(objectname = objectname, target.environment = obj.environment,
-    #                             flag_use_attrib=TRUE, flag_add_attrib=FALSE)
-    #   }
-    #   if(flag_do_sequentially) {
-    #     digests<-lapply(different_objects_db$objectname, fn_get_digest)
-    #   } else {
-    #     digests<-parallel::mclapply(different_objects_db$objectname, fn_get_digest)
-    #   }
-    #   different_objects_db$digest_new<-as.character(digests)
-    #
-    #   different_objects_db<-dplyr::select(
-    #     dplyr::filter(different_objects_db, digest_new==digest_old),
-    #     objectnames, archive_filename)
-    # }
 
     new_objects_db<-rbind(new_objects_db, different_objects_db)
 
@@ -556,10 +542,10 @@ load_objects<-function(storagepath, objectnames=NULL, target_environment=rlang::
 
   idx<-list_runtime_objects(storagepath = storagepath)
   if(is.null(objectnames)) {
-    objectnames<-idx$objectname
+    objectnames<-idx$objectnames
   } else {
-    if(length(setdiff(objectnames, idx$objectname))>0) {
-      stop(paste0("Objects ", paste0(setdiff(objectnames, idx$objectname), collapse = ','),
+    if(length(setdiff(objectnames, idx$objectnames))>0) {
+      stop(paste0("Objects ", paste0(setdiff(objectnames, idx$objectnames), collapse = ','),
                   " are missing from the objectstorage. Are you sure you have put them there?"))
     }
   }
@@ -578,11 +564,11 @@ load_objects<-function(storagepath, objectnames=NULL, target_environment=rlang::
   }
 
 #  idx<-list_runtime_objects(storagepath)
-  idx_f<-dplyr::filter(idx, objectnames %in% objectnames)
+  idx_f<-dplyr::filter(idx, objectnames %in% .env$objectnames)
   if(length(setdiff(objectnames, idx$objectnames))>0) {
     stop("There is no ", paste0(setdiff(objectnames, idx$objectnames), collapse=", "), " objects in the storage!")
   }
-  idx_gr<-tidyr::nest(dplyr::group_by(idx, archive_filename))
+  idx_gr<-tidyr::nest(dplyr::group_by(idx_f, archive_filename))
   for(i in seq(1, nrow(idx_gr))) {
     archivepath<-idx_gr$archive_filename[[i]]
     data<-idx_gr$data[[i]]

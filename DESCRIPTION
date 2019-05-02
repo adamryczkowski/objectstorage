@@ -17,8 +17,10 @@ Imports:
     purrr,
     dplyr,
     pathcat,
-    checkmate
-Depends:
+    checkmate,
+    stringr,
+    future,
+    tibble,
     data.table
 Remotes:
 	 adamryczkowski/pathcat,

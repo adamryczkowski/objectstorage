@@ -2,7 +2,7 @@
 #'
 #' It efficiently calculates object's digest.
 #'
-#' It treats \code{data.table} objects separately. Rather than invoking \code{digest::digest()}
+#' It treats \code{data.frame} objects separately. Rather than invoking \code{digest::digest()}
 #' on them directly, it first splits the object into individual columns, sorts them,
 #' calculates the
 #' digest on each column separately (trying to do that in parallel), and merges the
@@ -37,17 +37,17 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
   #Należy usunąć nasze metadane do kalkulacji digestu, bo metadane same mogą zawierać digest i nigdy nie uzyskamy spójnych wyników
   obj<-get(objectname, envir = target.environment)
 
-  if (data.table::is.data.table(obj))
+  if ('data.frame' %in% class(obj))
   {
-    d<-tryCatch(parallel::mclapply(obj , function(x) digest::digest(x, algo="md5")),
+    d<-tryCatch(parallel::mclapply(obj , function(x) mydigest(x)),
                 error=function(e) e)
     if ('error' %in% class(d))
     {
-      d<-lapply(obj , function(x) digest::digest(x, algo="md5"))
+      d<-lapply(obj , function(x) mydigest(x))
     }
-    d<-digest::digest(d[order(names(d))])
+    d<-mydigest(d[order(names(d))])
   } else {
-    d<-digest::digest(obj)
+    d<-mydigest(obj)
   }
   if(flag_add_attrib) {
     if(objectname %in% ls(envir = target.environment)) { #It may be in the parent of the environment, and in this case we will not touch it
@@ -61,7 +61,7 @@ calculate.object.digest<-function(objectname, target.environment=NULL, flag_use_
 clear_digest_cache<-function(objectname, envir) {
   while(!identical(envir, .GlobalEnv)) {
     if(objectname %in% names(envir)) {
-      setattr(envir[[objectname]], getOption('objectstorage.reserved_attr_for_hash'), NULL)
+      data.table::setattr(envir[[objectname]], getOption('objectstorage.reserved_attr_for_hash'), NULL)
       return(TRUE)
     }
     envir<-parent.env(envir)
@@ -72,4 +72,18 @@ clear_digest_cache<-function(objectname, envir) {
 assertDigest<-function(digest)
 {
   checkmate::assertString(digest, pattern = '^[0-9a-f]{32}$')
+}
+
+
+mydigest<-function(object, algo='md5', ...) {
+  library(future)
+  #future::plan(future::multiprocess)
+  fname <-tempfile()
+  producer %<-% {
+    mystream <- file(fname, open="wb")
+    writeBin(object, endian="little", con=mystream)
+    close(mystream) # sends signal to the consumer (digester)
+  }
+
+  md5 <- digest::digest(fname, file = TRUE, algo = algo, ...)
 }

@@ -18,7 +18,7 @@ Lowercase MD5 string with the digest of the object
 It efficiently calculates object's digest.
 }
 \details{
-It treats \code{data.table} objects separately. Rather than invoking \code{digest::digest()}
+It treats \code{data.frame} objects separately. Rather than invoking \code{digest::digest()}
 on them directly, it first splits the object into individual columns, sorts them,
 calculates the
 digest on each column separately (trying to do that in parallel), and merges the

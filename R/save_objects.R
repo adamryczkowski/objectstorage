@@ -130,6 +130,9 @@ save_large_object<-function(obj, file, compress='xz', wait_for=c('save','compres
                      stage2fn = save_fn_stage2, fn_to_run_after_compress=fn_to_run_after_compress, compress = compress,
                      parallel_cpus=parallel_cpus, flag_compress_async=FALSE),
       detached = wait_for=='none')
+    if(wait_for=='none') {
+      job<-NULL
+    }
   }
   return(job)
 }
@@ -233,7 +236,7 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
     hash<-calculate.object.digest(objectname, obj.environment,
                                   flag_use_attrib = TRUE, flag_add_attrib = FALSE)
     if(!is.null(attr(env[[objectname]],hashattrname))) {
-      setattr(env[[objectname]], hashattrname, NULL)
+      data.table::setattr(env[[objectname]], hashattrname, NULL)
     }
     return(hash)
   }
@@ -261,7 +264,7 @@ set_runtime_archive<-function(storagepath, obj.environment, objectnames=NULL,
       return(list(job=NULL, dbchunk=dbchunk))
     }
   } else {
-    dbchunk<-data.table(objectnames=objectnames, digest=digests, size=sizes,
+    dbchunk<-tibble::tibble(objectnames=objectnames, digest=digests, size=sizes,
                         single_object=length(objectnames)==1,
                         archive_filename=archive_filename,
                         compress=compress, flag_use_tmp_storage=flag_use_tmp_storage)
